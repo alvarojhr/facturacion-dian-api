@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from facturacion_dian_kit.core.models import (
     CustomerDocumentType,
@@ -10,7 +10,19 @@ from facturacion_dian_kit.core.models import (
     DocumentType,
     Environment,
 )
-from pydantic import BaseModel, Field
+from facturacion_dian_kit.server.examples import (
+    ATTACHED_DOCUMENT_REQUEST_EXAMPLE,
+    ATTACHED_DOCUMENT_RESPONSE_EXAMPLE,
+    BUYER_LOOKUP_REQUEST_EXAMPLE,
+    BUYER_LOOKUP_RESPONSE_EXAMPLE,
+    DOCUMENT_STATUS_RESPONSE_EXAMPLE,
+    DOCUMENT_SUBMISSION_REQUEST_EXAMPLES,
+    DOCUMENT_SUBMISSION_RESPONSE_EXAMPLE,
+    HEALTH_RESPONSE_EXAMPLE,
+    NUMBERING_RANGE_LOOKUP_REQUEST_EXAMPLE,
+    NUMBERING_RANGE_LOOKUP_RESPONSE_EXAMPLE,
+)
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class LineItemInput(BaseModel):
@@ -117,6 +129,10 @@ class SubmissionOptionsInput(BaseModel):
 class DocumentSubmissionRequest(BaseModel):
     """Public request contract for document submission."""
 
+    model_config = ConfigDict(
+        json_schema_extra=cast(dict[str, Any], {"examples": DOCUMENT_SUBMISSION_REQUEST_EXAMPLES})
+    )
+
     document: DocumentInput
     issuer: IssuerInput | None = None
     buyer: BuyerInput
@@ -139,6 +155,18 @@ class SubmissionArtifactPayload(BaseModel):
 class DocumentSubmissionResponse(BaseModel):
     """Public response contract for document submission and status lookups."""
 
+    model_config = ConfigDict(
+        json_schema_extra=cast(
+            dict[str, Any],
+            {
+                "examples": [
+                    DOCUMENT_SUBMISSION_RESPONSE_EXAMPLE,
+                    DOCUMENT_STATUS_RESPONSE_EXAMPLE,
+                ]
+            },
+        )
+    )
+
     submission_id: str
     tracking_id: str
     client_reference: str | None = None
@@ -152,6 +180,10 @@ class DocumentSubmissionResponse(BaseModel):
 
 class AttachedDocumentRequest(BaseModel):
     """Public request to build an AttachedDocument ZIP payload."""
+
+    model_config = ConfigDict(
+        json_schema_extra=cast(dict[str, Any], {"example": ATTACHED_DOCUMENT_REQUEST_EXAMPLE})
+    )
 
     document_number: str
     document_type_code: str
@@ -172,6 +204,10 @@ class AttachedDocumentRequest(BaseModel):
 class AttachedDocumentResponse(BaseModel):
     """ZIP build response for AttachedDocument payloads."""
 
+    model_config = ConfigDict(
+        json_schema_extra=cast(dict[str, Any], {"example": ATTACHED_DOCUMENT_RESPONSE_EXAMPLE})
+    )
+
     xml_filename: str
     zip_filename: str
     content_base64: str
@@ -179,6 +215,10 @@ class AttachedDocumentResponse(BaseModel):
 
 class BuyerLookupRequest(BaseModel):
     """Public buyer lookup request."""
+
+    model_config = ConfigDict(
+        json_schema_extra=cast(dict[str, Any], {"example": BUYER_LOOKUP_REQUEST_EXAMPLE})
+    )
 
     environment: Environment | None = None
     document_type: Literal["NIT", "CC", "CE", "TI", "PASSPORT"]
@@ -204,6 +244,10 @@ class BuyerLookupPayload(BaseModel):
 class BuyerLookupResponse(BaseModel):
     """Buyer lookup response."""
 
+    model_config = ConfigDict(
+        json_schema_extra=cast(dict[str, Any], {"example": BUYER_LOOKUP_RESPONSE_EXAMPLE})
+    )
+
     found: bool
     error_message: str | None = None
     customer: BuyerLookupPayload | None = None
@@ -211,6 +255,10 @@ class BuyerLookupResponse(BaseModel):
 
 class NumberingRangeLookupRequest(BaseModel):
     """Request to look up DIAN numbering ranges."""
+
+    model_config = ConfigDict(
+        json_schema_extra=cast(dict[str, Any], {"example": NUMBERING_RANGE_LOOKUP_REQUEST_EXAMPLE})
+    )
 
     environment: Environment | None = None
     account_code: str
@@ -234,11 +282,19 @@ class NumberingRangePayload(BaseModel):
 class NumberingRangeLookupResponse(BaseModel):
     """Numbering range lookup response."""
 
+    model_config = ConfigDict(
+        json_schema_extra=cast(dict[str, Any], {"example": NUMBERING_RANGE_LOOKUP_RESPONSE_EXAMPLE})
+    )
+
     ranges: list[NumberingRangePayload] = Field(default_factory=list)
 
 
 class HealthResponse(BaseModel):
     """Health probe response."""
+
+    model_config = ConfigDict(
+        json_schema_extra=cast(dict[str, Any], {"example": HEALTH_RESPONSE_EXAMPLE})
+    )
 
     status: str
     version: str

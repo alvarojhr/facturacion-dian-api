@@ -1,0 +1,46 @@
+{
+  "client_reference": "nd-1001",
+  "document": {
+    "number": "ND000001",
+    "type": "NOTA_DEBITO",
+    "issue_date": "2026-03-13",
+    "issue_time": "11:00:00-05:00",
+    "payment_method": "CASH"
+  },
+  "buyer": {
+    "document_number": "800199436",
+    "document_type": "NIT",
+    "name": "Empresa Ejemplo S.A.S."
+  },
+  "resolution": {
+    "number": "18764000001",
+    "prefix": "ND"
+  },
+  "totals": {
+    "subtotal": 10000,
+    "tax_total": 1900,
+    "total": 11900
+  },
+  "line_items": [
+    {
+      "description": "Ajuste por intereses",
+      "quantity": 1,
+      "unit_price": 10000,
+      "line_total": 10000,
+      "tax_type": "IVA_19",
+      "tax_amount": 1900
+    }
+  ],
+  "references": {
+    "referenced_document_number": "FDK000001",
+    "referenced_document_key": "abc123def456",
+    "referenced_issue_date": "2026-03-12",
+    "reason": "Cobro de intereses",
+    "response_code": "1"
+  },
+  "submission_options": {
+    "software_id": "software-demo-id",
+    "software_pin": "pin-demo-001",
+    "test_set_id": "test-set-demo-001"
+  }
+}

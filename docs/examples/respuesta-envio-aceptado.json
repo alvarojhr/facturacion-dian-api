@@ -1,0 +1,24 @@
+{
+  "submission_id": "5c314980-5ec3-4af7-98d3-6bf0b9081010",
+  "tracking_id": "2c6c3df3-6301-4170-9e1e-a2441a8b5d5e",
+  "client_reference": "pedido-erp-1001",
+  "document_key": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "qr_url": "https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "status": "accepted",
+  "messages": [
+    "Document received successfully.",
+    "Processed successfully."
+  ],
+  "dian_response": {
+    "is_valid": true,
+    "status_code": "00",
+    "status_description": "Processed successfully.",
+    "status_message": "Document received successfully.",
+    "tracking_id": "2c6c3df3-6301-4170-9e1e-a2441a8b5d5e",
+    "error_messages": []
+  },
+  "artifacts": {
+    "xml_base64": "PFNpZ25lZD5vazwvU2lnbmVkPg==",
+    "xml_filename": "ws_FDK000001.xml"
+  }
+}

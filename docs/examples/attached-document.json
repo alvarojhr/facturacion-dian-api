@@ -1,0 +1,16 @@
+{
+  "document_number": "FDK000001",
+  "document_type_code": "01",
+  "issuer_nit": "900123456",
+  "issuer_name": "Example Issuer SAS",
+  "receiver_name": "Cliente Demo SAS",
+  "receiver_email": "facturas@cliente.test",
+  "reply_to_email": "billing@example-issuer.test",
+  "company_name": "Example Issuer SAS",
+  "business_line": "Ferreteria y materiales",
+  "invoice_xml_base64": "PEludm9pY2U+ZGVtbzwvSW52b2ljZT4=",
+  "invoice_xml_filename": "ws_FDK000001.xml",
+  "issue_date": "2026-04-01",
+  "cufe": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "validation_result_code": "02"
+}

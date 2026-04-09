@@ -1,0 +1,45 @@
+{
+  "client_reference": "nc-1001",
+  "document": {
+    "number": "NC000001",
+    "type": "NOTA_CREDITO",
+    "issue_date": "2026-03-13",
+    "issue_time": "09:00:00-05:00",
+    "payment_method": "CASH"
+  },
+  "buyer": {
+    "document_number": "800199436",
+    "document_type": "NIT",
+    "name": "Empresa Ejemplo S.A.S."
+  },
+  "resolution": {
+    "number": "18764000001",
+    "prefix": "NC"
+  },
+  "totals": {
+    "subtotal": 50000,
+    "tax_total": 9500,
+    "total": 59500
+  },
+  "line_items": [
+    {
+      "description": "Tornillo hexagonal 1/4 x 1 zinc",
+      "quantity": 100,
+      "unit_price": 500,
+      "line_total": 50000,
+      "tax_type": "IVA_19",
+      "tax_amount": 9500
+    }
+  ],
+  "references": {
+    "referenced_document_number": "FDK000001",
+    "referenced_document_key": "abc123def456",
+    "referenced_issue_date": "2026-03-12",
+    "reason": "Devolucion parcial"
+  },
+  "submission_options": {
+    "software_id": "software-demo-id",
+    "software_pin": "pin-demo-001",
+    "test_set_id": "test-set-demo-001"
+  }
+}

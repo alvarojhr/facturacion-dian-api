@@ -1,0 +1,17 @@
+{
+  "found": true,
+  "error_message": null,
+  "customer": {
+    "display_name": "Cliente DIAN S.A.S.",
+    "document_type": "NIT",
+    "document_number": "900123456",
+    "email": "contacto@cliente-dian.test",
+    "phone": null,
+    "address": null,
+    "city_code": null,
+    "city_name": null,
+    "department_code": null,
+    "department_name": null,
+    "country_code": "CO"
+  }
+}

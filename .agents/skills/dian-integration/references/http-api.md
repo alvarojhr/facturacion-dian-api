@@ -1,26 +1,29 @@
 # HTTP API
 
-Base endpoints:
+Usa esta referencia cuando el usuario necesite el contrato oficial de la API publica de `facturacion-dian-kit`.
+
+Endpoints oficiales:
 
 - `POST /api/v1/documents/submissions`
 - `GET /api/v1/documents/submissions/{tracking_id}`
 - `POST /api/v1/attached-documents`
 - `POST /api/v1/customers/lookup`
 - `POST /api/v1/numbering-ranges/lookup`
+- `GET /health`
 
-Submission request structure:
+Bloques principales del request de envio:
 
-- `document`: number, type, issue date/time, payment method, optional POS data
-- `issuer`: optional issuer overrides such as NIT, DV, software owner NIT
-- `buyer`: buyer identity and contact data
-- `resolution`: authorized resolution number and prefix, optional range metadata
-- `totals`: subtotal, tax total, total
-- `line_items`: commercial lines with DIAN tax classification
-- `references`: referenced document metadata for note documents
-- `submission_options`: runtime-only DIAN parameters like software id/pin, technical key, test set id, and whether to return XML artifacts
-- `client_reference`: opaque caller correlation id
+- `document`
+- `issuer`
+- `buyer`
+- `resolution`
+- `totals`
+- `line_items`
+- `references`
+- `submission_options`
+- `client_reference`
 
-Submission response structure:
+Campos principales de la respuesta:
 
 - `submission_id`
 - `tracking_id`
@@ -31,3 +34,5 @@ Submission response structure:
 - `messages`
 - `dian_response`
 - `artifacts`
+
+Para la guia completa, lee [`../../../../docs/integracion-http.md`](../../../../docs/integracion-http.md).

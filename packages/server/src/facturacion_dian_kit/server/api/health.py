@@ -8,9 +8,10 @@ from facturacion_dian_kit.core.config import settings
 from facturacion_dian_kit.core.models import HealthStatus
 from facturacion_dian_kit.core.signing.certificate import get_certificate_bundle
 from facturacion_dian_kit.server.contracts import HealthResponse
+from facturacion_dian_kit.server.examples import HEALTH_RESPONSE_EXAMPLE
 from fastapi import APIRouter
 
-router = APIRouter()
+router = APIRouter(tags=["Operacion"])
 
 
 def _package_version() -> str:
@@ -20,7 +21,17 @@ def _package_version() -> str:
         return "0.1.0a0"
 
 
-@router.get("/health", response_model=HealthResponse)
+@router.get(
+    "/health",
+    response_model=HealthResponse,
+    summary="Estado operativo del servicio",
+    responses={
+        200: {
+            "description": "Snapshot del runtime y del certificado cargado.",
+            "content": {"application/json": {"example": HEALTH_RESPONSE_EXAMPLE}},
+        }
+    },
+)
 async def health_check() -> HealthResponse:
     """Return the runtime health snapshot for the server."""
 

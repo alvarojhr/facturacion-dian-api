@@ -52,6 +52,9 @@ jobs:
         if: steps.changes.outputs.docs_only == 'true'
         run: echo "Only .md files changed; skipping heavy validation steps."
 
+      - name: Validate public docs and examples
+        run: python3 scripts/validate_public_docs.py
+
       - uses: actions/setup-python@v5
         if: steps.changes.outputs.docs_only != 'true'
         with:

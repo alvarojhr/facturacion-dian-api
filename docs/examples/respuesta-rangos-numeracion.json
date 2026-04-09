@@ -1,0 +1,14 @@
+{
+  "ranges": [
+    {
+      "resolution_number": "18764107158626",
+      "resolution_date": "2026-03-13",
+      "prefix": "FDK",
+      "from_number": 1,
+      "to_number": 99999,
+      "valid_date_from": "2026-03-13",
+      "valid_date_to": "2028-03-13",
+      "technical_key": "technical-key-demo-001"
+    }
+  ]
+}

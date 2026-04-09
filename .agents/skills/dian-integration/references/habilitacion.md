@@ -1,19 +1,24 @@
 # Habilitacion
 
-Use habilitacion when validating DIAN connectivity and test-set compliance before production.
+Usa habilitacion para validar conectividad DIAN y cumplimiento del test set antes de pasar a produccion.
 
-Required runtime inputs:
+Inputs runtime minimos:
 
 - `DIAN_ENVIRONMENT=habilitacion`
 - `DIAN_SOFTWARE_ID`
 - `DIAN_SOFTWARE_PIN`
 - `DIAN_TEST_SET_ID`
-- certificate path and password
+- certificado y password
 
-Recommended sequence:
+Secuencia recomendada:
 
-1. Verify the certificate loads locally.
-2. Submit a known-good invoice payload.
-3. Save the returned `tracking_id`.
-4. Query `GET /api/v1/documents/submissions/{tracking_id}` until DIAN returns a functional result.
-5. Only after repeated success, move to production credentials and production endpoint configuration.
+1. Verifica carga local del certificado.
+2. Envia un payload conocido y valido.
+3. Guarda el `tracking_id`.
+4. Consulta `GET /api/v1/documents/submissions/{tracking_id}` hasta obtener resultado funcional.
+5. Solo despues de una corrida estable, mueve credenciales y endpoints a produccion.
+
+Lee tambien:
+
+- [`../../../../docs/guia-habilitacion.md`](../../../../docs/guia-habilitacion.md)
+- [`../../../../docs/guia-certificados-y-secretos.md`](../../../../docs/guia-certificados-y-secretos.md)

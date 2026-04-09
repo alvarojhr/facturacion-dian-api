@@ -1,0 +1,49 @@
+{
+  "client_reference": "venta-pos-2001",
+  "document": {
+    "number": "POS000001",
+    "type": "DOCUMENTO_EQUIVALENTE_POS",
+    "issue_date": "2026-03-12",
+    "issue_time": "10:15:30-05:00",
+    "payment_method": "CARD",
+    "point_of_sale": {
+      "register_plate": "POS-1",
+      "register_location": "Mostrador principal",
+      "cashier_name": "Ana Perez",
+      "register_type": "POS",
+      "sale_code": "SALE-100",
+      "buyer_loyalty_points": 10
+    }
+  },
+  "buyer": {
+    "name": "Consumidor Final",
+    "document_type": "FINAL_CONSUMER"
+  },
+  "resolution": {
+    "number": "18764000002",
+    "prefix": "POS"
+  },
+  "totals": {
+    "subtotal": 42000,
+    "tax_total": 7980,
+    "total": 49980
+  },
+  "line_items": [
+    {
+      "description": "Martillo carpintero 16oz",
+      "item_name": "Martillo carpintero 16oz",
+      "item_code": "MAR-016",
+      "unit_code": "94",
+      "quantity": 1,
+      "unit_price": 42000,
+      "line_total": 42000,
+      "tax_type": "IVA_19",
+      "tax_amount": 7980
+    }
+  ],
+  "submission_options": {
+    "software_id": "software-demo-id",
+    "software_pin": "pin-demo-001",
+    "test_set_id": "test-set-demo-001"
+  }
+}

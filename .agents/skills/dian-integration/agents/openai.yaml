@@ -1,7 +1,7 @@
 interface:
-  display_name: "DIAN Integration"
-  short_description: "Adopt facturacion-dian-kit faster"
-  default_prompt: "Use $dian-integration to configure facturacion-dian-kit, validate DIAN payloads, and explain integration or habilitacion issues."
+  display_name: "Integracion API DIAN"
+  short_description: "Integra la API publica de facturacion-dian-kit con menos friccion"
+  default_prompt: "Usa $dian-integration para integrar la API publica de facturacion-dian-kit, validar payloads, revisar configuracion DIAN y explicar errores operativos o de habilitacion."
 
 policy:
   allow_implicit_invocation: true

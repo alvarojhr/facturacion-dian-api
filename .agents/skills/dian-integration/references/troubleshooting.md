@@ -1,33 +1,21 @@
 # Troubleshooting
 
-## 422
+Clasifica el problema primero:
 
-The request shape does not satisfy the public API schema. Check missing blocks or wrong field names.
+- `422`: request invalido respecto al contrato HTTP.
+- `503`: configuracion local incompleta o certificado invalido.
+- `502`: falla upstream o de transporte con DIAN.
+- `504`: timeout DIAN.
+- `200` + `status=rejected`: rechazo funcional de DIAN.
 
-## 503
+Checks rapidos:
 
-Local configuration is incomplete or invalid. Typical causes:
+- confirma endpoint y nombres de campo del contrato oficial;
+- revisa `messages` y `dian_response`;
+- valida certificado, password y variables `DIAN_*`;
+- verifica si el error pertenece a negocio DIAN o a operacion local.
 
-- missing certificate file
-- wrong certificate password
-- missing `DIAN_SOFTWARE_ID`
-- missing `DIAN_SOFTWARE_PIN`
-- missing `DIAN_TECHNICAL_KEY` for invoices
-- missing `DIAN_TEST_SET_ID` in habilitacion
+Guias completas:
 
-## 502
-
-DIAN returned a non-success HTTP response or the transport failed before a functional response was parsed.
-
-## 504
-
-DIAN timed out. Treat this as upstream unavailability, not a business rejection.
-
-## Rejected submission with HTTP 200
-
-This means DIAN processed the request and rejected it functionally. Inspect:
-
-- `messages`
-- `dian_response.status_code`
-- `dian_response.status_description`
-- `dian_response.error_messages`
+- [`../../../../docs/troubleshooting-operativo.md`](../../../../docs/troubleshooting-operativo.md)
+- [`../../../../docs/catalogo-errores-dian.md`](../../../../docs/catalogo-errores-dian.md)

@@ -36,8 +36,12 @@ def _package_version() -> str:
 
 
 app = FastAPI(
-    title="Facturacion DIAN Kit",
-    description="Open toolkit for Colombian DIAN electronic invoicing.",
+    title="facturacion-dian-kit API",
+    description=(
+        "API HTTP de alto nivel para integrar facturacion electronica DIAN desde ERP, POS "
+        "y backends sin depender del lenguaje de programacion. Expone envio de documentos, "
+        "consulta de estado, AttachedDocument y lookups DIAN operativos."
+    ),
     version=_package_version(),
 )
 
@@ -105,7 +109,7 @@ async def root() -> dict[str, str]:
     """Return the service identity."""
 
     return {
-        "service": "Facturacion DIAN Kit",
+        "service": "facturacion-dian-kit API",
         "version": _package_version(),
         "environment": settings.dian.environment,
     }

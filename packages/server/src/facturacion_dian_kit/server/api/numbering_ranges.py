@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Annotated
+
 from facturacion_dian_kit.core.config import resolve_wsdl_url, settings
 from facturacion_dian_kit.core.dian.client import DianClient
 from facturacion_dian_kit.core.models import NumberingRangePayload
@@ -9,14 +11,37 @@ from facturacion_dian_kit.server.contracts import (
     NumberingRangeLookupRequest,
     NumberingRangeLookupResponse,
 )
+from facturacion_dian_kit.server.examples import (
+    ERROR_502_EXAMPLE,
+    ERROR_504_EXAMPLE,
+    NUMBERING_RANGE_LOOKUP_REQUEST_EXAMPLE,
+    NUMBERING_RANGE_LOOKUP_RESPONSE_EXAMPLE,
+)
 from facturacion_dian_kit.server.mappers import to_public_numbering_ranges
-from fastapi import APIRouter
+from fastapi import APIRouter, Body
 
-router = APIRouter(prefix="/api/v1/numbering-ranges")
+router = APIRouter(prefix="/api/v1/numbering-ranges", tags=["Consultas"])
 
 
-@router.post("/lookup", response_model=NumberingRangeLookupResponse)
-async def lookup_numbering_ranges(req: NumberingRangeLookupRequest) -> NumberingRangeLookupResponse:
+@router.post(
+    "/lookup",
+    response_model=NumberingRangeLookupResponse,
+    summary="Consultar rangos de numeracion autorizados",
+    responses={
+        200: {
+            "description": "Rangos autorizados normalizados.",
+            "content": {"application/json": {"example": NUMBERING_RANGE_LOOKUP_RESPONSE_EXAMPLE}},
+        },
+        502: {"description": "Falla upstream o de transporte con DIAN.", "content": {"application/json": {"example": ERROR_502_EXAMPLE}}},
+        504: {"description": "Timeout llamando a DIAN.", "content": {"application/json": {"example": ERROR_504_EXAMPLE}}},
+    },
+)
+async def lookup_numbering_ranges(
+    req: Annotated[
+        NumberingRangeLookupRequest,
+        Body(openapi_examples={"numbering_ranges_lookup": {"value": NUMBERING_RANGE_LOOKUP_REQUEST_EXAMPLE}}),
+    ],
+) -> NumberingRangeLookupResponse:
     """Lookup DIAN numbering ranges for the provided software code."""
 
     endpoint_url = resolve_wsdl_url(req.environment or settings.dian.environment)

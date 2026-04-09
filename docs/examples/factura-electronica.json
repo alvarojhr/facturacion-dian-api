@@ -1,0 +1,63 @@
+{
+  "client_reference": "pedido-erp-1001",
+  "document": {
+    "number": "FDK000001",
+    "type": "FACTURA_ELECTRONICA",
+    "issue_date": "2026-03-12",
+    "issue_time": "14:30:00-05:00",
+    "payment_method": "CASH"
+  },
+  "buyer": {
+    "document_number": "800199436",
+    "document_type": "NIT",
+    "name": "Empresa Ejemplo S.A.S.",
+    "email": "compras@ejemplo.com",
+    "phone": "3001234567",
+    "address": "Calle 10 # 5-11",
+    "city_code": "11001",
+    "city_name": "Bogota",
+    "department_code": "11",
+    "department_name": "Bogota D.C.",
+    "country_code": "CO"
+  },
+  "resolution": {
+    "number": "18764000001",
+    "prefix": "FDK"
+  },
+  "totals": {
+    "subtotal": 100000,
+    "tax_total": 19000,
+    "total": 119000
+  },
+  "line_items": [
+    {
+      "description": "Tornillo hexagonal 1/4 x 1 zinc",
+      "item_name": "Tornillo hexagonal 1/4 x 1 zinc",
+      "item_code": "TOR-001",
+      "unit_code": "94",
+      "quantity": 100,
+      "unit_price": 500,
+      "line_total": 50000,
+      "tax_type": "IVA_19",
+      "tax_amount": 9500
+    },
+    {
+      "description": "Tuerca hexagonal 1/4 zinc",
+      "item_name": "Tuerca hexagonal 1/4 zinc",
+      "item_code": "TUE-001",
+      "unit_code": "94",
+      "quantity": 100,
+      "unit_price": 500,
+      "line_total": 50000,
+      "tax_type": "IVA_19",
+      "tax_amount": 9500
+    }
+  ],
+  "submission_options": {
+    "software_id": "software-demo-id",
+    "software_pin": "pin-demo-001",
+    "technical_key": "technical-key-demo-001",
+    "test_set_id": "test-set-demo-001",
+    "return_xml_artifact": true
+  }
+}

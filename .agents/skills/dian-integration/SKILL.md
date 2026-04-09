@@ -1,32 +1,32 @@
 ---
 name: dian-integration
-description: Configure, validate, and adopt facturacion-dian-kit for DIAN electronic invoicing workflows. Use when Codex needs to help a team integrate the public HTTP API, prepare environment variables and certificates, validate submission payloads, explain DIAN rejections, map ERP data into the public contract, or guide habilitacion testing without relying on private production credentials.
+description: Configura, valida y adopta facturacion-dian-kit como API HTTP de alto nivel para facturacion electronica DIAN. Use when Codex needs to help a team integrate the public API from an ERP, POS or backend, prepare environment variables and certificates, validate request payloads, explain DIAN rejections, or guide habilitacion without using production secrets.
 ---
 
 # DIAN Integration
 
-Read this skill when helping a team adopt `facturacion-dian-kit`.
+Read this skill when helping a team integrate the public API of `facturacion-dian-kit`.
 
 ## Start here
 
-- Read [`references/http-api.md`](references/http-api.md) for the public HTTP contract.
-- Read [`references/examples.md`](references/examples.md) when the user needs payload examples or field mapping guidance.
-- Read [`references/troubleshooting.md`](references/troubleshooting.md) when the user reports errors or DIAN rejections.
-- Read [`references/habilitacion.md`](references/habilitacion.md) when the task is about habilitacion setup or test-set validation.
+- Read [`references/http-api.md`](references/http-api.md) for the official HTTP endpoints and request blocks.
+- Read [`references/examples.md`](references/examples.md) when the task needs canonical JSON examples or ERP/POS mapping guidance.
+- Read [`references/troubleshooting.md`](references/troubleshooting.md) when the issue is operational, transport-related, or a DIAN rejection.
+- Read [`references/habilitacion.md`](references/habilitacion.md) when the task is about test-set setup or habilitacion flow.
 
 ## Workflow
 
-1. Confirm whether the user is integrating against the HTTP server, not a future SDK.
-2. Normalize the user input into the public nested contract:
+1. Confirm the caller will integrate against the public HTTP API of `facturacion-dian-kit`.
+2. Normalize business data into the official blocks:
    `document`, `issuer`, `buyer`, `resolution`, `totals`, `line_items`, `references`, `submission_options`.
-3. Check configuration requirements before debugging payloads:
-   `DIAN_SOFTWARE_ID`, `DIAN_SOFTWARE_PIN`, certificate path/password, issuer NIT, and `DIAN_TEST_SET_ID` for habilitacion.
-4. Distinguish functional DIAN rejection from transport or local configuration failure.
-5. Prefer deterministic guidance tied to the documented API and environment variables instead of speculative advice.
+3. Validate runtime DIAN inputs before debugging payload semantics:
+   `DIAN_SOFTWARE_ID`, `DIAN_SOFTWARE_PIN`, certificate path/password, issuer NIT, and `DIAN_TEST_SET_ID` in habilitacion.
+4. Distinguish HTTP contract errors from local configuration failures and from functional DIAN rejections.
+5. Prefer deterministic guidance grounded in the documented API, official endpoints, and canonical example payloads.
 
 ## Guardrails
 
 - Do not ask users to paste private certificates or secrets into chat.
-- Do not treat the current project as a packaged SDK.
-- Do not recommend production use of placeholder technical keys, test-set ids, or example issuer metadata.
-- If a rejection depends on DIAN business rules, explain the likely cause and point to the payload fields involved.
+- Do not present `facturacion-dian-kit` as an SDK or language-specific library.
+- Do not recommend production use of demo identifiers, test-set ids, or placeholder issuer metadata.
+- If DIAN rejects a document functionally, explain the likely payload area involved and the next verification step.
