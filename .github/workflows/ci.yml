@@ -1,0 +1,49 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            packages/core/pyproject.toml
+            packages/server/pyproject.toml
+
+      - name: Install packages
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ./packages/core -e "./packages/server[dev]"
+
+      - name: Validate skill metadata
+        run: python scripts/validate_skill.py
+
+      - name: Ruff
+        run: python -m ruff check .
+
+      - name: Mypy
+        run: python -m mypy packages/core/src packages/server/src
+
+      - name: Pytest
+        run: python -m pytest
+
+      - name: Build Docker image
+        run: docker build -t facturacion-dian-kit .
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

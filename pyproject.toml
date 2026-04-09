@@ -1,0 +1,57 @@
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = [
+    "packages/core/src",
+    "packages/server/src",
+]
+testpaths = ["tests"]
+markers = [
+    "integration: marks tests that call live DIAN endpoints",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "W"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["F401"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = [
+    "packages/core/src",
+    "packages/server/src",
+    "typings",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "facturacion_dian_kit.core.signing.xades",
+]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = [
+    "facturacion_dian_kit.core.dian.envelope",
+    "facturacion_dian_kit.core.signing.ws_security",
+    "facturacion_dian_kit.core.xml.attached_document_builder",
+    "facturacion_dian_kit.core.xml.common",
+    "facturacion_dian_kit.core.xml.credit_note_builder",
+    "facturacion_dian_kit.core.xml.debit_note_builder",
+    "facturacion_dian_kit.core.xml.invoice_builder",
+]
+disable_error_code = ["arg-type", "assignment", "call-overload", "unused-ignore"]
+
+[tool.coverage.run]
+branch = true
+source = [
+    "facturacion_dian_kit.core",
+    "facturacion_dian_kit.server",
+]

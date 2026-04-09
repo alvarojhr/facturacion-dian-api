@@ -1,0 +1,7 @@
+interface:
+  display_name: "DIAN Integration"
+  short_description: "Adopt facturacion-dian-kit faster"
+  default_prompt: "Use $dian-integration to configure facturacion-dian-kit, validate DIAN payloads, and explain integration or habilitacion issues."
+
+policy:
+  allow_implicit_invocation: true
