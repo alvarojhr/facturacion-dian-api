@@ -6,9 +6,6 @@ on:
       - main
   pull_request:
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -16,7 +13,7 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -58,7 +55,7 @@ jobs:
       - name: Validate public docs and examples
         run: python3 scripts/validate_public_docs.py
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         if: steps.changes.outputs.docs_only != 'true'
         with:
           python-version: "3.12"
@@ -95,6 +92,8 @@ jobs:
 
       - name: Gitleaks
         if: steps.changes.outputs.docs_only != 'true'
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          docker run --rm \
+            -v "$PWD:/repo" \
+            zricethezav/gitleaks:latest \
+            detect --source=/repo --redact -v --exit-code=2 --log-opts=-1
