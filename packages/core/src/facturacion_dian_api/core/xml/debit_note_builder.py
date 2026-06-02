@@ -33,7 +33,7 @@ from lxml import etree
 
 DEFAULT_DEBIT_NOTE_RESPONSE_CODE = "1"
 DEFAULT_DEBIT_NOTE_REASON = "Intereses"
-DEBIT_NOTE_PROFILE_ID = "DIAN 2.1: Nota DÃ©bito de Factura ElectrÃ³nica de Venta"
+DEBIT_NOTE_PROFILE_ID = "DIAN 2.1: Nota Débito de Factura Electrónica de Venta"
 
 
 def build_debit_note_xml(
