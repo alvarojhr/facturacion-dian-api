@@ -33,7 +33,7 @@ from facturacion_dian_api.core.xml.namespaces import (
 )
 from lxml import etree
 
-FACTURA_PROFILE_ID = "DIAN 2.1: Factura ElectrÃ³nica de Venta"
+FACTURA_PROFILE_ID = "DIAN 2.1: Factura Electrónica de Venta"
 POS_PROFILE_ID = "DIAN 2.1: Documento Equivalente POS"
 
 
