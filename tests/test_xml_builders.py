@@ -1,7 +1,7 @@
 """Tests for UBL 2.1 XML builders.
 
 Validates structure, namespace correctness, and content for:
-- Factura ElectrÃ³nica (Invoice)
+- Factura Electrónica (Invoice)
 - Documento Equivalente POS (Invoice variant)
 - Nota CrÃ©dito (CreditNote)
 """
@@ -295,7 +295,7 @@ def _xpath_text(root: etree._Element, expr: str) -> str | None:
 
 
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-# Invoice Builder (Factura ElectrÃ³nica)
+# Invoice Builder (Factura Electrónica)
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 
@@ -325,7 +325,7 @@ class TestInvoiceBuilderStructure:
 
     def test_profile_id(self, invoice_request: DocumentSubmitRequest) -> None:
         root = build_invoice_xml(invoice_request, FAKE_CUFE)
-        assert _xpath_text(root, "cbc:ProfileID") == "DIAN 2.1: Factura ElectrÃ³nica de Venta"
+        assert _xpath_text(root, "cbc:ProfileID") == "DIAN 2.1: Factura Electrónica de Venta"
 
     def test_profile_execution_id(self, invoice_request: DocumentSubmitRequest) -> None:
         root = build_invoice_xml(invoice_request, FAKE_CUFE)
@@ -859,7 +859,7 @@ class TestCreditNoteBuilderStructure:
         self, credit_note_request: DocumentSubmitRequest
     ) -> None:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
-        assert _xpath_text(root, "cbc:ProfileID") == "DIAN 2.1: Nota CrÃ©dito de Factura ElectrÃ³nica de Venta"
+        assert _xpath_text(root, "cbc:ProfileID") == "DIAN 2.1: Nota CrÃ©dito de Factura Electrónica de Venta"
 
     def test_customization_id_matches_referenced_credit_note(
         self, credit_note_request: DocumentSubmitRequest
@@ -985,7 +985,7 @@ class TestDebitNoteBuilder:
         self, debit_note_request: DocumentSubmitRequest
     ) -> None:
         root = build_debit_note_xml(debit_note_request, FAKE_CUFE)
-        assert _xpath_text(root, "cbc:ProfileID") == "DIAN 2.1: Nota DÃ©bito de Factura ElectrÃ³nica de Venta"
+        assert _xpath_text(root, "cbc:ProfileID") == "DIAN 2.1: Nota DÃ©bito de Factura Electrónica de Venta"
 
     def test_uses_requested_monetary_total(
         self, debit_note_request: DocumentSubmitRequest
