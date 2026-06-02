@@ -1,0 +1,23 @@
+# Source of truth for runtime dependencies. Reflects the union of
+# packages/core/pyproject.toml and packages/server/pyproject.toml,
+# excluding the cross-dep on facturacion-dian-api-core (local package).
+#
+# Used to generate requirements.lock via:
+#   uv pip compile requirements.in --python-version 3.12 \
+#       --generate-hashes --output-file requirements.lock
+#
+# When you bump a dep in either pyproject.toml, also bump it here and
+# regenerate the lock.
+
+# core
+cryptography>=44.0.0
+httpx>=0.28.0
+lxml>=5.3.0
+pydantic>=2.10.0
+pydantic-settings>=2.7.0
+python-dotenv>=1.0.0
+signxml>=4.4.0
+
+# server
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0

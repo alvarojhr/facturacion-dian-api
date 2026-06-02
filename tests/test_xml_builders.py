@@ -859,7 +859,7 @@ class TestCreditNoteBuilderStructure:
         self, credit_note_request: DocumentSubmitRequest
     ) -> None:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
-        assert _xpath_text(root, "cbc:ProfileID") == "DIAN 2.1: Nota CrÃ©dito de Factura Electrónica de Venta"
+        assert _xpath_text(root, "cbc:ProfileID") == "DIAN 2.1: Nota Crédito de Factura Electrónica de Venta"
 
     def test_customization_id_matches_referenced_credit_note(
         self, credit_note_request: DocumentSubmitRequest
@@ -985,7 +985,7 @@ class TestDebitNoteBuilder:
         self, debit_note_request: DocumentSubmitRequest
     ) -> None:
         root = build_debit_note_xml(debit_note_request, FAKE_CUFE)
-        assert _xpath_text(root, "cbc:ProfileID") == "DIAN 2.1: Nota DÃ©bito de Factura Electrónica de Venta"
+        assert _xpath_text(root, "cbc:ProfileID") == "DIAN 2.1: Nota Débito de Factura Electrónica de Venta"
 
     def test_uses_requested_monetary_total(
         self, debit_note_request: DocumentSubmitRequest

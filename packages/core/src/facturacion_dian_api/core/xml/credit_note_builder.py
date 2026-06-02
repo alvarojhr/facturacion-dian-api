@@ -36,7 +36,7 @@ from facturacion_dian_api.core.xml.namespaces import (
 )
 from lxml import etree
 
-CREDIT_NOTE_PROFILE_ID = "DIAN 2.1: Nota CrÃ©dito de Factura ElectrÃ³nica de Venta"
+CREDIT_NOTE_PROFILE_ID = "DIAN 2.1: Nota Crédito de Factura Electrónica de Venta"
 
 
 def build_credit_note_xml(
@@ -91,7 +91,7 @@ def build_credit_note_xml(
     _sub(root, cbc("IssueDate"), req.issue_date)
     _sub(root, cbc("IssueTime"), req.issue_time)
     _sub(root, cbc("CreditNoteTypeCode"), CREDIT_NOTE_TYPE)
-    _sub(root, cbc("Note"), req.credit_note_reason or "Nota CrÃ©dito")
+    _sub(root, cbc("Note"), req.credit_note_reason or "Nota Crédito")
     _sub(
         root,
         cbc("DocumentCurrencyCode"),

@@ -86,6 +86,14 @@ jobs:
         if: steps.changes.outputs.docs_only != 'true'
         run: python -m pytest
 
+      # Supply-chain scan: revisa el lockfile contra la base de
+      # vulnerabilidades de PyPI. Falla la build si hay CVE conocido.
+      - name: pip-audit
+        if: steps.changes.outputs.docs_only != 'true'
+        run: |
+          python -m pip install pip-audit
+          python -m pip_audit -r requirements.lock
+
       - name: Build Docker image
         if: steps.changes.outputs.docs_only != 'true'
         run: docker build -t facturacion-dian-api .
