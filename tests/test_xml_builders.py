@@ -371,6 +371,23 @@ class TestInvoiceBuilderParties:
         supplier = _xpath(root, "cac:AccountingSupplierParty")
         assert len(supplier) == 1
 
+    def test_supplier_additional_account_id_defaults_to_juridica(
+        self, invoice_request: DocumentSubmitRequest
+    ) -> None:
+        root = build_invoice_xml(invoice_request, FAKE_CUFE)
+        account_id = _xpath_text(root, "cac:AccountingSupplierParty/cbc:AdditionalAccountID")
+        assert account_id == settings.company.additional_account_id
+
+    def test_supplier_additional_account_id_persona_natural(
+        self, invoice_request: DocumentSubmitRequest, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Construir/Kennedy son personas naturales → "2". Antes estaba
+        # hardcodeado "1" y DIAN mostraba "Persona Jurídica".
+        monkeypatch.setattr(settings.company, "additional_account_id", "2")
+        root = build_invoice_xml(invoice_request, FAKE_CUFE)
+        account_id = _xpath_text(root, "cac:AccountingSupplierParty/cbc:AdditionalAccountID")
+        assert account_id == "2"
+
     def test_customer_party_exists(self, invoice_request: DocumentSubmitRequest) -> None:
         root = build_invoice_xml(invoice_request, FAKE_CUFE)
         customer = _xpath(root, "cac:AccountingCustomerParty")
