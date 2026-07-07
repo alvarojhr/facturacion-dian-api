@@ -328,7 +328,10 @@ def resolve_invoice_control(req: DocumentSubmitRequest) -> tuple[int, int, str, 
 def build_supplier_party(parent: etree._Element, prefix: str, req: DocumentSubmitRequest) -> None:
     """Build cac:AccountingSupplierParty from company config."""
     supplier = _sub(parent, cac("AccountingSupplierParty"))
-    _sub(supplier, cbc("AdditionalAccountID"), "1")
+    # "1" = persona jurídica, "2" = persona natural. Configurable porque
+    # ambos negocios reales (Construir/Kennedy) son personas naturales;
+    # antes estaba hardcodeado "1" y DIAN mostraba "Persona Jurídica".
+    _sub(supplier, cbc("AdditionalAccountID"), settings.company.additional_account_id)
 
     party = _sub(supplier, cac("Party"))
 
