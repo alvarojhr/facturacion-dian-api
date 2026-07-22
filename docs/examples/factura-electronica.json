@@ -7,6 +7,22 @@
     "issue_time": "14:30:00-05:00",
     "payment_method": "CASH"
   },
+  "issuer": {
+    "nit": "900123456",
+    "dv": "7",
+    "name": "Example Issuer SAS",
+    "additional_account_id": "1",
+    "address": "Street 10 #20-30",
+    "city_code": "11001",
+    "city_name": "Bogota",
+    "department_code": "11",
+    "department_name": "Bogota D.C.",
+    "country_code": "CO",
+    "tax_level_code": "O-47",
+    "economic_activity": "4752",
+    "phone": "3001234567",
+    "email": "billing@example-issuer.test"
+  },
   "buyer": {
     "document_number": "800199436",
     "document_type": "NIT",

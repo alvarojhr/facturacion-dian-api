@@ -62,10 +62,22 @@ class DocumentInput(BaseModel):
 
 
 class IssuerInput(BaseModel):
-    """Optional issuer-specific runtime overrides."""
+    """Optional issuer identity; ``name`` enables the body-owned contract."""
 
     nit: str | None = None
     dv: str | None = None
+    name: str | None = None
+    additional_account_id: Literal["1", "2"] | None = None
+    address: str | None = None
+    city_code: str | None = None
+    city_name: str | None = None
+    department_code: str | None = None
+    department_name: str | None = None
+    country_code: str | None = None
+    tax_level_code: str | None = None
+    economic_activity: str | None = None
+    phone: str | None = None
+    email: str | None = None
     software_owner_nit: str | None = None
 
 
