@@ -115,7 +115,9 @@ curl --request POST "http://localhost:8000/api/v1/numbering-ranges/lookup" `
 ## Campos clave del request
 
 - `document`: identifica el documento y su tipo.
-- `issuer`: sobrescribe datos del emisor si hace falta.
+- `issuer`: si incluye `name`, la identidad completa del body tiene prioridad;
+  cada campo ausente cae al `COMPANY_*` equivalente. Sin `name` se conserva el
+  contrato legacy (`nit`, `dv`, `software_owner_nit`).
 - `buyer`: datos del adquiriente.
 - `resolution`: numeracion autorizada.
 - `totals`: subtotal, impuestos y total.

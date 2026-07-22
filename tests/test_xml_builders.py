@@ -388,6 +388,98 @@ class TestInvoiceBuilderParties:
         account_id = _xpath_text(root, "cac:AccountingSupplierParty/cbc:AdditionalAccountID")
         assert account_id == "2"
 
+    def test_supplier_complete_body_identity_overrides_company_config(
+        self, invoice_request: DocumentSubmitRequest
+    ) -> None:
+        body_request = invoice_request.model_copy(
+            update={
+                "issuer_nit": "49656271",
+                "issuer_dv": "3",
+                "issuer_name": "RUEDA CARREÑO OLGA LUCIA",
+                "issuer_additional_account_id": "2",
+                "issuer_address": "CR 6 # 8-66 BRR SANTA ANA",
+                "issuer_city_code": "68276",
+                "issuer_city_name": "Floridablanca",
+                "issuer_department_code": "68",
+                "issuer_department_name": "Santander",
+                "issuer_country_code": "CO",
+                "issuer_tax_level_code": "R-99-PN",
+                "issuer_economic_activity": "4752",
+                "issuer_phone": "3174283330",
+                "issuer_email": "olga@example.com",
+            }
+        )
+
+        root = build_invoice_xml(body_request, FAKE_CUFE)
+        supplier = "cac:AccountingSupplierParty"
+
+        assert _xpath_text(root, f"{supplier}/cbc:AdditionalAccountID") == "2"
+        assert (
+            _xpath_text(root, f"{supplier}/cac:Party/cbc:IndustryClassificationCode")
+            == "4752"
+        )
+        assert _xpath_text(root, f"{supplier}/cac:Party/cac:PartyName/cbc:Name") == (
+            "RUEDA CARREÑO OLGA LUCIA"
+        )
+        assert _xpath_text(root, f"{supplier}/cac:Party/cac:PhysicalLocation/cac:Address/cbc:ID") == (
+            "68276"
+        )
+        assert _xpath_text(
+            root,
+            f"{supplier}/cac:Party/cac:PhysicalLocation/cac:Address/cac:AddressLine/cbc:Line",
+        ) == "CR 6 # 8-66 BRR SANTA ANA"
+        assert _xpath_text(
+            root,
+            f"{supplier}/cac:Party/cac:PartyTaxScheme/cbc:TaxLevelCode",
+        ) == "R-99-PN"
+        assert _xpath_text(
+            root,
+            f"{supplier}/cac:Party/cac:PartyTaxScheme/cbc:CompanyID",
+        ) == "49656271"
+        assert _xpath_text(root, f"{supplier}/cac:Party/cac:Contact/cbc:Telephone") == (
+            "3174283330"
+        )
+        assert _xpath_text(root, f"{supplier}/cac:Party/cac:Contact/cbc:ElectronicMail") == (
+            "olga@example.com"
+        )
+
+    def test_supplier_complete_body_falls_back_per_missing_field(
+        self, invoice_request: DocumentSubmitRequest
+    ) -> None:
+        body_request = invoice_request.model_copy(
+            update={
+                "issuer_name": "Body Issuer",
+                "issuer_city_name": "Body City",
+                "issuer_address": None,
+            }
+        )
+
+        root = build_invoice_xml(body_request, FAKE_CUFE)
+        address = "cac:AccountingSupplierParty/cac:Party/cac:PhysicalLocation/cac:Address"
+        assert _xpath_text(root, f"{address}/cbc:CityName") == "Body City"
+        assert _xpath_text(root, f"{address}/cac:AddressLine/cbc:Line") == settings.company.address
+
+    def test_supplier_without_name_preserves_legacy_company_identity(
+        self, invoice_request: DocumentSubmitRequest
+    ) -> None:
+        legacy_request = invoice_request.model_copy(
+            update={
+                "issuer_name": None,
+                "issuer_address": "THIS MUST BE IGNORED",
+                "issuer_city_name": "THIS MUST BE IGNORED",
+                "issuer_economic_activity": "9999",
+            }
+        )
+
+        root = build_invoice_xml(legacy_request, FAKE_CUFE)
+        supplier = "cac:AccountingSupplierParty/cac:Party"
+        assert _xpath_text(root, f"{supplier}/cac:PartyName/cbc:Name") == settings.company.name
+        assert _xpath_text(
+            root,
+            f"{supplier}/cac:PhysicalLocation/cac:Address/cac:AddressLine/cbc:Line",
+        ) == settings.company.address
+        assert _xpath(root, f"{supplier}/cbc:IndustryClassificationCode") == []
+
     def test_customer_party_exists(self, invoice_request: DocumentSubmitRequest) -> None:
         root = build_invoice_xml(invoice_request, FAKE_CUFE)
         customer = _xpath(root, "cac:AccountingCustomerParty")
@@ -1186,4 +1278,3 @@ class TestMoneyFormatter:
 
     def test_large_amount(self) -> None:
         assert _money(9999999) == "9999999.00"
-

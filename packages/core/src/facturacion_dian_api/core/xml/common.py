@@ -7,11 +7,24 @@ from decimal import ROUND_HALF_UP, Decimal
 from facturacion_dian_api.core.config import settings
 from facturacion_dian_api.core.models import DocumentLine, DocumentSubmitRequest
 from facturacion_dian_api.core.runtime_config import (
+    resolved_issuer_additional_account_id,
+    resolved_issuer_address,
+    resolved_issuer_city_code,
+    resolved_issuer_city_name,
+    resolved_issuer_country_code,
+    resolved_issuer_department_code,
+    resolved_issuer_department_name,
     resolved_issuer_dv,
+    resolved_issuer_economic_activity,
+    resolved_issuer_email,
+    resolved_issuer_name,
     resolved_issuer_nit,
+    resolved_issuer_phone,
+    resolved_issuer_tax_level_code,
     resolved_software_id,
     resolved_software_owner_dv,
     resolved_software_owner_nit,
+    uses_body_owned_issuer,
 )
 from facturacion_dian_api.core.xml.namespaces import (
     CURRENCY_COP,
@@ -326,33 +339,47 @@ def resolve_invoice_control(req: DocumentSubmitRequest) -> tuple[int, int, str, 
 
 
 def build_supplier_party(parent: etree._Element, prefix: str, req: DocumentSubmitRequest) -> None:
-    """Build cac:AccountingSupplierParty from company config."""
+    """Build the supplier, preferring the complete request issuer when enabled."""
+    issuer_name = resolved_issuer_name(req)
+    city_code = resolved_issuer_city_code(req)
+    city_name = resolved_issuer_city_name(req)
+    department_code = resolved_issuer_department_code(req)
+    department_name = resolved_issuer_department_name(req)
+    address_line = resolved_issuer_address(req)
+    country_code = resolved_issuer_country_code(req)
+
     supplier = _sub(parent, cac("AccountingSupplierParty"))
     # "1" = persona jurídica, "2" = persona natural. Configurable porque
     # ambos negocios reales (Construir/Kennedy) son personas naturales;
     # antes estaba hardcodeado "1" y DIAN mostraba "Persona Jurídica".
-    _sub(supplier, cbc("AdditionalAccountID"), settings.company.additional_account_id)
+    _sub(supplier, cbc("AdditionalAccountID"), resolved_issuer_additional_account_id(req))
 
     party = _sub(supplier, cac("Party"))
+    if uses_body_owned_issuer(req):
+        _sub(
+            party,
+            cbc("IndustryClassificationCode"),
+            resolved_issuer_economic_activity(req),
+        )
 
     party_name = _sub(party, cac("PartyName"))
-    _sub(party_name, cbc("Name"), settings.company.name)
+    _sub(party_name, cbc("Name"), issuer_name)
 
     location = _sub(party, cac("PhysicalLocation"))
     address = _sub(location, cac("Address"))
-    _sub(address, cbc("ID"), settings.company.city_code)
-    _sub(address, cbc("CityName"), settings.company.city_name)
-    _sub(address, cbc("PostalZone"), settings.company.city_code)
-    _sub(address, cbc("CountrySubentity"), settings.company.department_name)
-    _sub(address, cbc("CountrySubentityCode"), settings.company.department_code)
+    _sub(address, cbc("ID"), city_code)
+    _sub(address, cbc("CityName"), city_name)
+    _sub(address, cbc("PostalZone"), city_code)
+    _sub(address, cbc("CountrySubentity"), department_name)
+    _sub(address, cbc("CountrySubentityCode"), department_code)
     addr_line = _sub(address, cac("AddressLine"))
-    _sub(addr_line, cbc("Line"), settings.company.address)
+    _sub(addr_line, cbc("Line"), address_line)
     country = _sub(address, cac("Country"))
-    _sub(country, cbc("IdentificationCode"), settings.company.country_code)
-    _sub(country, cbc("Name"), "Colombia", languageID="es")
+    _sub(country, cbc("IdentificationCode"), country_code)
+    _sub(country, cbc("Name"), _country_name(country_code), languageID="es")
 
     tax_scheme_elem = _sub(party, cac("PartyTaxScheme"))
-    _sub(tax_scheme_elem, cbc("RegistrationName"), settings.company.name)
+    _sub(tax_scheme_elem, cbc("RegistrationName"), issuer_name)
     _sub(
         tax_scheme_elem,
         cbc("CompanyID"),
@@ -362,27 +389,27 @@ def build_supplier_party(parent: etree._Element, prefix: str, req: DocumentSubmi
     _sub(
         tax_scheme_elem,
         cbc("TaxLevelCode"),
-        _normalize_tax_level_code(settings.company.tax_scheme, default="O-47"),
+        _normalize_tax_level_code(resolved_issuer_tax_level_code(req), default="O-47"),
         listName="05",
     )
 
     tax_address = _sub(tax_scheme_elem, cac("RegistrationAddress"))
-    _sub(tax_address, cbc("ID"), settings.company.city_code)
-    _sub(tax_address, cbc("CityName"), settings.company.city_name)
-    _sub(tax_address, cbc("PostalZone"), settings.company.city_code)
-    _sub(tax_address, cbc("CountrySubentity"), settings.company.department_name)
-    _sub(tax_address, cbc("CountrySubentityCode"), settings.company.department_code)
+    _sub(tax_address, cbc("ID"), city_code)
+    _sub(tax_address, cbc("CityName"), city_name)
+    _sub(tax_address, cbc("PostalZone"), city_code)
+    _sub(tax_address, cbc("CountrySubentity"), department_name)
+    _sub(tax_address, cbc("CountrySubentityCode"), department_code)
     ta_line = _sub(tax_address, cac("AddressLine"))
-    _sub(ta_line, cbc("Line"), settings.company.address)
+    _sub(ta_line, cbc("Line"), address_line)
     ta_country = _sub(tax_address, cac("Country"))
-    _sub(ta_country, cbc("IdentificationCode"), settings.company.country_code)
-    _sub(ta_country, cbc("Name"), "Colombia", languageID="es")
+    _sub(ta_country, cbc("IdentificationCode"), country_code)
+    _sub(ta_country, cbc("Name"), _country_name(country_code), languageID="es")
     scheme = _sub(tax_scheme_elem, cac("TaxScheme"))
     _sub(scheme, cbc("ID"), "01")
     _sub(scheme, cbc("Name"), "IVA")
 
     legal = _sub(party, cac("PartyLegalEntity"))
-    _sub(legal, cbc("RegistrationName"), settings.company.name)
+    _sub(legal, cbc("RegistrationName"), issuer_name)
     _sub(
         legal,
         cbc("CompanyID"),
@@ -394,8 +421,8 @@ def build_supplier_party(parent: etree._Element, prefix: str, req: DocumentSubmi
     _sub(corp_reg, cbc("Name"), resolved_issuer_nit(req))
 
     contact = _sub(party, cac("Contact"))
-    _sub(contact, cbc("Telephone"), settings.company.phone)
-    _sub(contact, cbc("ElectronicMail"), settings.company.email)
+    _sub(contact, cbc("Telephone"), resolved_issuer_phone(req))
+    _sub(contact, cbc("ElectronicMail"), resolved_issuer_email(req))
 
 
 def build_customer_party(parent: etree._Element, req: DocumentSubmitRequest) -> None:
@@ -694,4 +721,3 @@ def build_invoice_line(
     price = _sub(inv_line, cac("Price"))
     _sub(price, cbc("PriceAmount"), _money(line.unit_price), currencyID=CURRENCY_COP)
     _sub(price, cbc("BaseQuantity"), "1.00", unitCode=unit_code)
-

@@ -11,6 +11,8 @@ from facturacion_dian_api.core.config import settings
 from facturacion_dian_api.core.dian.client import DianClient
 from facturacion_dian_api.core.dian.response_parser import DianResponse
 from facturacion_dian_api.core.errors import DianTimeoutError
+from facturacion_dian_api.server.contracts import DocumentSubmissionRequest
+from facturacion_dian_api.server.mappers import to_core_submission_request
 from fastapi.testclient import TestClient
 
 
@@ -53,6 +55,67 @@ class TestDocumentSubmit:
         assert data["tracking_id"] is not None
         assert data["artifacts"]["xml_filename"] == "ws_FDK000001.xml"
         assert data["client_reference"] == "client-ref-001"
+
+    def test_submit_accepts_and_maps_complete_body_owned_issuer(
+        self,
+        client: TestClient,
+        sample_invoice_payload: dict,
+    ) -> None:
+        issuer = {
+            "nit": "49656271",
+            "dv": "3",
+            "name": "RUEDA CARREÑO OLGA LUCIA",
+            "additional_account_id": "2",
+            "address": "CR 6 # 8-66 BRR SANTA ANA",
+            "city_code": "68276",
+            "city_name": "Floridablanca",
+            "department_code": "68",
+            "department_name": "Santander",
+            "country_code": "CO",
+            "tax_level_code": "R-99-PN",
+            "economic_activity": "4752",
+            "phone": "3174283330",
+            "email": "olga@example.com",
+        }
+        sample_invoice_payload["issuer"] = issuer
+
+        request = DocumentSubmissionRequest.model_validate(sample_invoice_payload)
+        core = to_core_submission_request(request)
+
+        assert core.model_dump(
+            include={
+                "issuer_nit",
+                "issuer_dv",
+                "issuer_name",
+                "issuer_additional_account_id",
+                "issuer_address",
+                "issuer_city_code",
+                "issuer_city_name",
+                "issuer_department_code",
+                "issuer_department_name",
+                "issuer_country_code",
+                "issuer_tax_level_code",
+                "issuer_economic_activity",
+                "issuer_phone",
+                "issuer_email",
+            }
+        ) == {
+            "issuer_nit": issuer["nit"],
+            "issuer_dv": issuer["dv"],
+            "issuer_name": issuer["name"],
+            "issuer_additional_account_id": issuer["additional_account_id"],
+            "issuer_address": issuer["address"],
+            "issuer_city_code": issuer["city_code"],
+            "issuer_city_name": issuer["city_name"],
+            "issuer_department_code": issuer["department_code"],
+            "issuer_department_name": issuer["department_name"],
+            "issuer_country_code": issuer["country_code"],
+            "issuer_tax_level_code": issuer["tax_level_code"],
+            "issuer_economic_activity": issuer["economic_activity"],
+            "issuer_phone": issuer["phone"],
+            "issuer_email": issuer["email"],
+        }
+        assert client.post("/api/v1/documents/submissions", json=sample_invoice_payload).status_code == 200
 
     def test_submit_pos_document_returns_cude(
         self,
