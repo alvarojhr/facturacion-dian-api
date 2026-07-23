@@ -14,6 +14,7 @@ from facturacion_dian_api.core.errors import DianTimeoutError
 from facturacion_dian_api.server.contracts import DocumentSubmissionRequest
 from facturacion_dian_api.server.mappers import to_core_submission_request
 from fastapi.testclient import TestClient
+from lxml import etree
 
 
 class TestHealthEndpoint:
@@ -359,6 +360,20 @@ class TestAttachedDocument:
             payload = zf.read("ad_FDK123.xml")
             assert b"AttachedDocument" in payload
             assert b"billing@example-issuer.test" in payload
+            # La DIAN exige el literal "ApplicationResponse" dentro del
+            # DocumentReference del ParentDocumentLineReference, y que el
+            # ResultOfVerification cuelgue de ese DocumentReference (UBL 2.1).
+            root = etree.fromstring(payload)
+            ns = {
+                "cac": "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2",
+                "cbc": "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2",
+            }
+            doc_ref = root.find(
+                "cac:ParentDocumentLineReference/cac:DocumentReference", ns
+            )
+            assert doc_ref is not None
+            assert doc_ref.findtext("cbc:DocumentType", namespaces=ns) == "ApplicationResponse"
+            assert doc_ref.find("cac:ResultOfVerification", ns) is not None
 
 
 class TestCustomerLookup:

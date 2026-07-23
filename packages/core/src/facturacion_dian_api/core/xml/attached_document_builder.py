@@ -62,7 +62,13 @@ def build_attached_document_xml(req: AttachedDocumentBuildRequest) -> bytes:
     _sub(verification, cbc("LineID"), "1")
     document_reference = _sub(verification, cac("DocumentReference"))
     _sub(document_reference, cbc("ID"), req.document_number)
-    result = _sub(verification, cac("ResultOfVerification"))
+    # La DIAN exige el literal "ApplicationResponse" en este nodo: identifica el
+    # documento referenciado como el acuse (ApplicationResponse) del emisor. Sin
+    # el literal el buzón del receptor rechaza el AttachedDocument.
+    _sub(document_reference, cbc("DocumentType"), "ApplicationResponse")
+    # ResultOfVerification es hijo de DocumentReference (UBL 2.1 DocumentReferenceType);
+    # colgarlo de ParentDocumentLineReference (LineReferenceType) es XSD-inválido.
+    result = _sub(document_reference, cac("ResultOfVerification"))
     _sub(result, cbc("ValidatorID"), DIAN_VALIDATOR_ID)
     _sub(result, cbc("ValidationResultCode"), req.validation_result_code or "00")
     _sub(result, cbc("ValidationDate"), req.issue_date or date.today().isoformat())
