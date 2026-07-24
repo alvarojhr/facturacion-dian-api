@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import base64
+import io
+import zipfile
 
 from facturacion_dian_api.core.dian.envelope import (
     ACTION_GET_ACQUIRER,
@@ -11,6 +13,7 @@ from facturacion_dian_api.core.dian.envelope import (
     ACTION_GET_STATUS_ZIP,
     ACTION_GET_XML_BY_DOCUMENT_KEY,
     ACTION_SEND_BILL_SYNC,
+    ACTION_SEND_EVENT_UPDATE_STATUS,
     ACTION_SEND_TEST_SET_ASYNC,
     NS_SOAP,
     NS_WCF,
@@ -22,6 +25,7 @@ from facturacion_dian_api.core.dian.envelope import (
     build_get_status_zip_envelope,
     build_get_xml_by_document_key_envelope,
     build_send_bill_sync_envelope,
+    build_send_event_update_status_envelope,
     build_send_test_set_async_envelope,
     zip_and_encode,
 )
@@ -368,6 +372,93 @@ class TestResponseParser:
         assert d["is_valid"] is True
         assert d["status_code"] == "00"
         assert isinstance(d["error_messages"], list)
+
+
+class TestSendEventUpdateStatusEnvelope:
+    """Envelope that registers a RADIAN event (ApplicationResponse)."""
+
+    def test_action(self) -> None:
+        env = build_send_event_update_status_envelope(ENDPOINT, "zipb64")
+        root = _parse(env)
+        action = root.xpath("s:Header/wsa:Action", namespaces=NS)
+        assert action[0].text == ACTION_SEND_EVENT_UPDATE_STATUS
+        assert action[0].attrib[f"{{{NS_SOAP}}}mustUnderstand"] == "1"
+
+    def test_body_carries_zipped_content(self) -> None:
+        _, content_b64 = zip_and_encode("ar_030_SETP1.xml", b"<ApplicationResponse/>")
+        env = build_send_event_update_status_envelope(ENDPOINT, content_b64)
+        root = _parse(env)
+        content = root.xpath(
+            "s:Body/wcf:SendEventUpdateStatus/wcf:contentFile",
+            namespaces=NS,
+        )
+        assert content[0].text == content_b64
+
+        with zipfile.ZipFile(io.BytesIO(base64.b64decode(content[0].text))) as zf:
+            assert zf.namelist() == ["ar_030_SETP1.xml"]
+
+    def test_body_has_no_filename_argument(self) -> None:
+        # A diferencia de SendBillSync, la operacion SendEventUpdateStatus solo
+        # recibe contentFile (Anexo Tecnico v1.9 § 7.13.2). Mandar fileName la
+        # hace fallar en el WCF de la DIAN.
+        env = build_send_event_update_status_envelope(ENDPOINT, "zipb64")
+        root = _parse(env)
+        send_event = root.xpath("s:Body/wcf:SendEventUpdateStatus", namespaces=NS)[0]
+        assert [etree.QName(child).localname for child in send_event] == ["contentFile"]
+
+    def test_addressing_headers_target_the_endpoint(self) -> None:
+        env = build_send_event_update_status_envelope(ENDPOINT, "zipb64")
+        root = _parse(env)
+        to = root.xpath("s:Header/wsa:To", namespaces=NS)
+        reply_to = root.xpath("s:Header/wsa:ReplyTo/wsa:Address", namespaces=NS)
+        assert to[0].text == ENDPOINT
+        assert reply_to[0].text == WSA_ANONYMOUS
+
+
+class TestSendEventUpdateStatusResponse:
+    """The event response reuses the DianResponse shape (§ 7.13.3)."""
+
+    def test_parses_accepted_event(self) -> None:
+        resp_xml = b"""<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">
+  <s:Body>
+    <SendEventUpdateStatusResponse xmlns="http://wcf.dian.colombia">
+      <SendEventUpdateStatusResult xmlns:b="http://schemas.datacontract.org/2004/07/DianResponse">
+        <b:IsValid>true</b:IsValid>
+        <b:StatusCode>00</b:StatusCode>
+        <b:StatusDescription>Procesado Correctamente</b:StatusDescription>
+        <b:StatusMessage></b:StatusMessage>
+        <b:XmlDocumentKey>event-track-123</b:XmlDocumentKey>
+      </SendEventUpdateStatusResult>
+    </SendEventUpdateStatusResponse>
+  </s:Body>
+</s:Envelope>"""
+        resp = parse_send_bill_response(resp_xml)
+        assert resp.is_accepted is True
+        assert resp.tracking_id == "event-track-123"
+
+    def test_parses_rejected_event_with_rule_messages(self) -> None:
+        resp_xml = b"""<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">
+  <s:Body>
+    <SendEventUpdateStatusResponse xmlns="http://wcf.dian.colombia">
+      <SendEventUpdateStatusResult
+        xmlns:b="http://schemas.datacontract.org/2004/07/DianResponse"
+        xmlns:c="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
+        <b:ErrorMessage>
+          <c:string>Regla: AAD06, Rechazo: el valor UUID no esta correctamente calculado</c:string>
+        </b:ErrorMessage>
+        <b:IsValid>false</b:IsValid>
+        <b:StatusCode>99</b:StatusCode>
+        <b:StatusDescription>Documento con errores</b:StatusDescription>
+      </SendEventUpdateStatusResult>
+    </SendEventUpdateStatusResponse>
+  </s:Body>
+</s:Envelope>"""
+        resp = parse_send_bill_response(resp_xml)
+        assert resp.is_accepted is False
+        assert resp.is_rejected is True
+        assert "AAD06" in resp.error_messages[0]
 
 
 class TestGetXmlByDocumentKeyEnvelope:

@@ -16,6 +16,8 @@ from facturacion_dian_api.server.contracts import (
     DocumentSubmissionResponse,
     DownloadByKeyRequest,
     DownloadByKeyResponse,
+    EmitEventRequest,
+    EmitEventResponse,
     HealthResponse,
     NumberingRangeLookupRequest,
     NumberingRangeLookupResponse,
@@ -28,6 +30,8 @@ from facturacion_dian_api.server.examples import (
     DOCUMENT_STATUS_RESPONSE_EXAMPLE,
     DOCUMENT_SUBMISSION_REQUEST_EXAMPLES,
     DOCUMENT_SUBMISSION_RESPONSE_EXAMPLE,
+    EMIT_EVENT_OPENAPI_EXAMPLES,
+    EMIT_EVENT_RESPONSE_EXAMPLE,
     HEALTH_RESPONSE_EXAMPLE,
     NUMBERING_RANGE_LOOKUP_REQUEST_EXAMPLE,
     NUMBERING_RANGE_LOOKUP_RESPONSE_EXAMPLE,
@@ -45,9 +49,12 @@ REQUEST_MODELS = {
     "customer-lookup.json": BuyerLookupRequest,
     "numbering-ranges-lookup.json": NumberingRangeLookupRequest,
     "download-by-key.json": DownloadByKeyRequest,
+    "evento-acuse-recibo.json": EmitEventRequest,
+    "evento-reclamo.json": EmitEventRequest,
 }
 
 RESPONSE_MODELS = {
+    "respuesta-evento.json": EmitEventResponse,
     "respuesta-envio-aceptado.json": DocumentSubmissionResponse,
     "respuesta-lookup-cliente.json": BuyerLookupResponse,
     "respuesta-rangos-numeracion.json": NumberingRangeLookupResponse,
@@ -110,6 +117,10 @@ class TestPublicExamples:
         NumberingRangeLookupRequest.model_validate(NUMBERING_RANGE_LOOKUP_REQUEST_EXAMPLE)
         NumberingRangeLookupResponse.model_validate(NUMBERING_RANGE_LOOKUP_RESPONSE_EXAMPLE)
         HealthResponse.model_validate(HEALTH_RESPONSE_EXAMPLE)
+
+        for example in EMIT_EVENT_OPENAPI_EXAMPLES.values():
+            EmitEventRequest.model_validate(example["value"])
+        EmitEventResponse.model_validate(EMIT_EVENT_RESPONSE_EXAMPLE)
 
 
 class TestPublicDocs:

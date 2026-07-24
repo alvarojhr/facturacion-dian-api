@@ -15,6 +15,7 @@ from facturacion_dian_api.core.errors import (
 )
 from facturacion_dian_api.server.api.customers import router as customers_router
 from facturacion_dian_api.server.api.documents import router as documents_router
+from facturacion_dian_api.server.api.events import router as events_router
 from facturacion_dian_api.server.api.health import router as health_router
 from facturacion_dian_api.server.api.numbering_ranges import router as numbering_ranges_router
 from facturacion_dian_api.server.settings import server_settings
@@ -40,7 +41,8 @@ app = FastAPI(
     description=(
         "API HTTP de alto nivel para integrar facturacion electronica DIAN desde ERP, POS "
         "y backends sin depender del lenguaje de programacion. Expone envio de documentos, "
-        "consulta de estado, AttachedDocument y lookups DIAN operativos."
+        "consulta de estado, eventos RADIAN del receptor, AttachedDocument y lookups DIAN "
+        "operativos."
     ),
     version=_package_version(),
 )
@@ -56,6 +58,7 @@ if server_settings.allow_origins:
 app.include_router(health_router)
 app.include_router(customers_router)
 app.include_router(documents_router)
+app.include_router(events_router)
 app.include_router(numbering_ranges_router)
 
 

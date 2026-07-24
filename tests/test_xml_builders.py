@@ -10,7 +10,16 @@ from __future__ import annotations
 
 import pytest
 from facturacion_dian_api.core.config import settings
-from facturacion_dian_api.core.models import DocumentLine, DocumentSubmitRequest
+from facturacion_dian_api.core.models import (
+    DocumentLine,
+    DocumentSubmitRequest,
+    EventReceiverPerson,
+    EventSubmitRequest,
+)
+from facturacion_dian_api.core.xml.application_response_builder import (
+    application_response_to_xml_string,
+    build_application_response_xml,
+)
 from facturacion_dian_api.core.xml.common import _money, _sub, build_invoice_line, build_tax_totals
 from facturacion_dian_api.core.xml.credit_note_builder import (
     build_credit_note_xml,
@@ -22,6 +31,9 @@ from facturacion_dian_api.core.xml.debit_note_builder import (
 )
 from facturacion_dian_api.core.xml.invoice_builder import build_invoice_xml, invoice_to_xml_string
 from facturacion_dian_api.core.xml.namespaces import (
+    APPLICATION_RESPONSE_PROFILE_ID,
+    EVENT_DESCRIPTIONS,
+    NS_APPLICATION_RESPONSE,
     NS_CAC,
     NS_CBC,
     NS_CREDIT_NOTE,
@@ -41,6 +53,7 @@ NS = {
     "inv": NS_INVOICE,
     "cn": NS_CREDIT_NOTE,
     "dn": NS_DEBIT_NOTE,
+    "ar": NS_APPLICATION_RESPONSE,
     "cac": NS_CAC,
     "cbc": NS_CBC,
     "ext": NS_EXT,
@@ -1297,6 +1310,244 @@ class TestXMLSerialization:
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Common Helpers
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+
+class TestApplicationResponseBuilder:
+    """Structure of the RADIAN event ApplicationResponse (Anexo v1.9 § 6.5.4)."""
+
+    EVENT_CUDE = "c" * 96
+    EVENT_NUMBER = "EV000001"
+    ISSUE_DATE = "2026-07-23"
+    ISSUE_TIME = "09:15:00-05:00"
+
+    def _request(self, **overrides: object) -> EventSubmitRequest:
+        payload: dict[str, object] = {
+            "event_type": "030",
+            "environment": "habilitacion",
+            "software_id": "software-123",
+            "software_pin": "12345",
+            "document_cufe": "b" * 96,
+            "document_number": "SETP990000123",
+            "document_issue_date": "2026-07-10",
+            "supplier_nit": "800199436",
+            "supplier_name": "Proveedor Ejemplo S.A.S.",
+        }
+        payload.update(overrides)
+        return EventSubmitRequest.model_validate(payload)
+
+    def _build(self, **overrides: object) -> etree._Element:
+        return build_application_response_xml(
+            self._request(**overrides),
+            self.EVENT_CUDE,
+            self.EVENT_NUMBER,
+            self.ISSUE_DATE,
+            self.ISSUE_TIME,
+        )
+
+    def test_root_is_application_response(self) -> None:
+        root = self._build()
+        assert root.tag == f"{{{NS_APPLICATION_RESPONSE}}}ApplicationResponse"
+
+    def test_header_element_order(self) -> None:
+        """UBL is a sequence: a reordered header is schema-invalid."""
+        root = self._build()
+        locals_ = [etree.QName(child).localname for child in root]
+        assert locals_ == [
+            "UBLExtensions",
+            "UBLVersionID",
+            "CustomizationID",
+            "ProfileID",
+            "ProfileExecutionID",
+            "ID",
+            "UUID",
+            "IssueDate",
+            "IssueTime",
+            "SenderParty",
+            "ReceiverParty",
+            "DocumentResponse",
+        ]
+
+    def test_header_literals(self) -> None:
+        root = self._build()
+        assert root.findtext(cbc("UBLVersionID")) == "UBL 2.1"
+        assert root.findtext(cbc("CustomizationID")) == "1"
+        assert root.findtext(cbc("ProfileID")) == APPLICATION_RESPONSE_PROFILE_ID
+        assert root.findtext(cbc("ProfileExecutionID")) == "2"
+        assert root.findtext(cbc("ID")) == self.EVENT_NUMBER
+        assert root.findtext(cbc("IssueDate")) == self.ISSUE_DATE
+        assert root.findtext(cbc("IssueTime")) == self.ISSUE_TIME
+
+    def test_uuid_carries_cude_scheme(self) -> None:
+        root = self._build()
+        uuid = root.find(cbc("UUID"))
+        assert uuid is not None
+        assert uuid.text == self.EVENT_CUDE
+        assert uuid.get("schemeName") == "CUDE-SHA384"
+        assert uuid.get("schemeID") == "2"
+
+    def test_produccion_flips_environment_codes(self) -> None:
+        root = self._build(environment="produccion")
+        assert root.findtext(cbc("ProfileExecutionID")) == "1"
+        assert root.find(cbc("UUID")).get("schemeID") == "1"
+
+    def test_two_ubl_extensions_dian_and_signature_slot(self) -> None:
+        """AAC01 requires DianExtensions plus an empty slot for ds:Signature."""
+        root = self._build()
+        extensions = root.findall(f"{ext('UBLExtensions')}/{ext('UBLExtension')}")
+        assert len(extensions) == 2
+        assert extensions[0].find(f"{ext('ExtensionContent')}/{{{NS_STS}}}DianExtensions") is not None
+        assert len(extensions[1].find(ext("ExtensionContent"))) == 0
+
+    def test_dian_extensions_have_no_invoice_control(self) -> None:
+        """Events consume no DIAN numbering range, so no sts:InvoiceControl."""
+        root = self._build()
+        assert root.xpath("//sts:InvoiceControl", namespaces=NS) == []
+
+    def test_dian_extensions_child_order(self) -> None:
+        root = self._build()
+        dian_ext = root.xpath("//sts:DianExtensions", namespaces=NS)[0]
+        assert [etree.QName(child).localname for child in dian_ext] == [
+            "InvoiceSource",
+            "SoftwareProvider",
+            "SoftwareSecurityCode",
+            "AuthorizationProvider",
+            "QRCode",
+        ]
+
+    def test_qr_code_points_at_the_referenced_invoice(self) -> None:
+        """AAB36: the QR carries the referenced CUFE, never the event CUDE."""
+        root = self._build()
+        qr = root.xpath("//sts:QRCode/text()", namespaces=NS)[0]
+        assert qr.endswith("documentkey=" + "b" * 96)
+        assert self.EVENT_CUDE not in qr
+
+    def test_software_security_code_hashes_the_event_number(self) -> None:
+        # § 11.8: NroDocumento = ApplicationResponse/cbc:ID, no el numero de la
+        # factura referenciada.
+        from facturacion_dian_api.core.cufe.calculator import calculate_software_security_code
+
+        root = self._build()
+        code = root.xpath("//sts:SoftwareSecurityCode/text()", namespaces=NS)[0]
+        assert code == calculate_software_security_code("software-123", "12345", self.EVENT_NUMBER)
+
+    def test_sender_is_the_configured_company(self) -> None:
+        """Sender = quien genera el evento = el receptor de la factura."""
+        root = self._build()
+        sender_name = root.xpath(
+            "cac:SenderParty/cac:PartyTaxScheme/cbc:RegistrationName/text()",
+            namespaces=NS,
+        )
+        sender_nit = root.xpath(
+            "cac:SenderParty/cac:PartyTaxScheme/cbc:CompanyID/text()",
+            namespaces=NS,
+        )
+        assert sender_name == [settings.company.name]
+        assert sender_nit == [settings.company.nit]
+
+    def test_receiver_is_the_invoice_supplier(self) -> None:
+        root = self._build()
+        receiver = root.xpath(
+            "cac:ReceiverParty/cac:PartyTaxScheme/cbc:CompanyID",
+            namespaces=NS,
+        )[0]
+        assert receiver.text == "800199436"
+        assert receiver.get("schemeName") == "31"
+        assert receiver.get("schemeAgencyID") == "195"
+        assert receiver.get("schemeID")
+
+    def test_party_tax_scheme_hangs_directly_off_the_party(self) -> None:
+        """No cac:Party in between — the CUDE XPath depends on this shape."""
+        root = self._build()
+        assert root.xpath("cac:SenderParty/cac:Party", namespaces=NS) == []
+        assert root.xpath("cac:ReceiverParty/cac:Party", namespaces=NS) == []
+
+    @pytest.mark.parametrize("event_type", ["030", "032", "033"])
+    def test_response_code_and_description_per_event(self, event_type: str) -> None:
+        root = self._build(event_type=event_type)
+        response = root.xpath("cac:DocumentResponse/cac:Response", namespaces=NS)[0]
+        assert response.findtext(cbc("ResponseCode")) == event_type
+        assert response.findtext(cbc("Description")) == EVENT_DESCRIPTIONS[event_type]
+
+    def test_document_reference_fields(self) -> None:
+        root = self._build()
+        reference = root.xpath("cac:DocumentResponse/cac:DocumentReference", namespaces=NS)[0]
+        assert [etree.QName(child).localname for child in reference] == [
+            "ID",
+            "UUID",
+            "DocumentTypeCode",
+        ]
+        assert reference.findtext(cbc("ID")) == "SETP990000123"
+        uuid = reference.find(cbc("UUID"))
+        assert uuid.text == "b" * 96
+        assert uuid.get("schemeName") == "CUFE-SHA384"
+        assert reference.findtext(cbc("DocumentTypeCode")) == "01"
+
+    def test_claim_carries_cause_as_response_code_attributes(self) -> None:
+        root = self._build(
+            event_type="031",
+            claim_cause_code="03",
+            claim_description="Se recibieron 80 de 100 unidades.",
+        )
+        response_code = root.xpath(
+            "cac:DocumentResponse/cac:Response/cbc:ResponseCode",
+            namespaces=NS,
+        )[0]
+        assert response_code.text == "031"
+        assert response_code.get("listID") == "03"
+        assert response_code.get("name") == "Mercancía entregada parcialmente"
+        assert root.findtext(cbc("Note")) == "Se recibieron 80 de 100 unidades."
+        assert root.xpath(
+            "cac:DocumentResponse/cac:Response/cbc:Description/text()",
+            namespaces=NS,
+        ) == [EVENT_DESCRIPTIONS["031"]]
+
+    def test_non_claim_events_have_bare_response_code(self) -> None:
+        root = self._build(event_type="032")
+        response_code = root.xpath(
+            "cac:DocumentResponse/cac:Response/cbc:ResponseCode",
+            namespaces=NS,
+        )[0]
+        assert response_code.attrib == {}
+        assert root.find(cbc("Note")) is None
+
+    def test_receiver_person_becomes_issuer_party(self) -> None:
+        root = self._build(
+            event_type="032",
+            receiver_person=EventReceiverPerson(
+                document_number="1098765432",
+                document_type="13",
+                first_name="Ana",
+                family_name="Perez",
+                job_title="Jefe de bodega",
+                organization_department="Almacen",
+            ),
+        )
+        person = root.xpath(
+            "cac:DocumentResponse/cac:IssuerParty/cac:Person",
+            namespaces=NS,
+        )[0]
+        assert [etree.QName(child).localname for child in person] == [
+            "ID",
+            "FirstName",
+            "FamilyName",
+            "JobTitle",
+            "OrganizationDepartment",
+        ]
+        person_id = person.find(cbc("ID"))
+        assert person_id.text == "1098765432"
+        assert person_id.get("schemeName") == "13"
+        # Solo el NIT lleva digito de verificacion (AAH14).
+        assert person_id.get("schemeID") is None
+
+    def test_issuer_party_omitted_without_receiver_person(self) -> None:
+        root = self._build()
+        assert root.xpath("cac:DocumentResponse/cac:IssuerParty", namespaces=NS) == []
+
+    def test_serialized_xml_is_parseable(self) -> None:
+        xml_bytes = application_response_to_xml_string(self._build())
+        assert xml_bytes.startswith(b"<?xml version='1.0' encoding='UTF-8'?>")
+        parsed = etree.fromstring(xml_bytes)
+        assert parsed.tag == f"{{{NS_APPLICATION_RESPONSE}}}ApplicationResponse"
 
 
 class TestMoneyFormatter:

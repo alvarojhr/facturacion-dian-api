@@ -41,6 +41,7 @@ ignore_errors = true
 module = [
     "facturacion_dian_api.core.dian.envelope",
     "facturacion_dian_api.core.signing.ws_security",
+    "facturacion_dian_api.core.xml.application_response_builder",
     "facturacion_dian_api.core.xml.attached_document_builder",
     "facturacion_dian_api.core.xml.common",
     "facturacion_dian_api.core.xml.credit_note_builder",

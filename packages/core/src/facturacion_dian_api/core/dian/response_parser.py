@@ -45,6 +45,7 @@ def _find_result_element(root: etree._Element) -> etree._Element | None:
     result_names = {
         "SendBillSyncResult",
         "SendTestSetAsyncResult",
+        "SendEventUpdateStatusResult",
         "GetStatusResult",
         "GetStatusZipResult",
     }

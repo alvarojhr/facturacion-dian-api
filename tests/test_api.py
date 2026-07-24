@@ -5,9 +5,11 @@ from __future__ import annotations
 import base64
 import io
 import zipfile
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from facturacion_dian_api.core.config import resolve_wsdl_url, settings
+from facturacion_dian_api.core.cufe.calculator import EventCudeFields, calculate_event_cude
 from facturacion_dian_api.core.dian.client import DianClient
 from facturacion_dian_api.core.dian.response_parser import DianResponse
 from facturacion_dian_api.core.errors import DianTimeoutError
@@ -376,6 +378,235 @@ class TestAttachedDocument:
             assert doc_ref is not None
             assert doc_ref.findtext("cbc:DocumentType", namespaces=ns) == "ApplicationResponse"
             assert doc_ref.find("cac:ResultOfVerification", ns) is not None
+
+
+class TestEmitEvent:
+    """RADIAN receiver events through the public API."""
+
+    def test_emit_acknowledgement_returns_cude_and_artifacts(
+        self,
+        client: TestClient,
+        sample_event_payload: dict,
+    ) -> None:
+        response = client.post("/api/v1/events", json=sample_event_payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ACCEPTED"
+        assert len(data["cude"]) == 96
+        assert data["tracking_id"] == "event-track-123"
+        assert data["client_reference"] == "acuse-erp-1001"
+        artifacts = data["artifacts"]
+        assert artifacts["application_response_xml_filename"] == "ar_030_SETP990000123.xml"
+        assert base64.b64decode(artifacts["application_response_xml_base64"]) == b"<Signed>ok</Signed>"
+        # DIAN no devolvio XML en el stub, asi que el artefacto propio queda nulo.
+        assert artifacts["dian_response_xml_base64"] is None
+
+    def test_emit_event_is_deterministic_for_fixed_inputs(
+        self,
+        client: TestClient,
+        sample_event_payload: dict,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Same inputs + same instant → same CUDE.
+
+        The event's date/time are re-stamped from the clock on every call
+        (rule AAD09e forces issue date = signing date), so two calls at
+        different times legitimately yield different CUDEs. Determinism is a
+        property of the *inputs*, so the clock is frozen to isolate it.
+        """
+        frozen = datetime(2026, 7, 23, 9, 15, 0, tzinfo=timezone(timedelta(hours=-5)))
+        monkeypatch.setattr("facturacion_dian_api.core.events.colombia_now", lambda: frozen)
+
+        first = client.post("/api/v1/events", json=sample_event_payload)
+        second = client.post("/api/v1/events", json=sample_event_payload)
+        assert first.json()["cude"] == second.json()["cude"]
+
+    def test_derived_event_number_is_stable_across_calls(
+        self,
+        client: TestClient,
+        sample_event_payload: dict,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Omitting event_number derives it from the CUFE, deterministically.
+
+        With the clock frozen, the only field that could vary between two calls
+        is the derived consecutive; an equal CUDE proves it is stable.
+        """
+        frozen = datetime(2026, 7, 23, 9, 15, 0, tzinfo=timezone(timedelta(hours=-5)))
+        monkeypatch.setattr("facturacion_dian_api.core.events.colombia_now", lambda: frozen)
+
+        sample_event_payload.pop("event_number")
+        first = client.post("/api/v1/events", json=sample_event_payload)
+        second = client.post("/api/v1/events", json=sample_event_payload)
+        assert first.status_code == 200
+        assert first.json()["cude"] == second.json()["cude"]
+
+    def test_event_date_and_cude_come_from_the_colombian_clock(
+        self,
+        client: TestClient,
+        sample_event_payload: dict,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Rule AAD09e: the stamped date must be the Colombian calendar day.
+
+        20:30 in Bogota is already the next day in UTC, so a naive
+        ``utcnow()`` would stamp 2026-07-24 and DIAN would reject the event.
+        """
+        frozen = datetime(2026, 7, 23, 20, 30, 15, tzinfo=timezone(timedelta(hours=-5)))
+        monkeypatch.setattr("facturacion_dian_api.core.events.colombia_now", lambda: frozen)
+
+        response = client.post("/api/v1/events", json=sample_event_payload)
+        assert response.status_code == 200
+
+        expected_cude = calculate_event_cude(
+            EventCudeFields(
+                num_de="EV000001",
+                fec_emi="2026-07-23",
+                hor_emi="20:30:15-05:00",
+                nit_fe=settings.company.nit,
+                doc_adq="800199436",
+                response_code="030",
+                document_id="SETP990000123",
+                document_type_code="01",
+                software_pin="12345",
+            )
+        )
+        assert response.json()["cude"] == expected_cude
+
+    def test_claim_without_cause_returns_422(
+        self,
+        client: TestClient,
+        sample_event_payload: dict,
+    ) -> None:
+        sample_event_payload["event_type"] = "031"
+        response = client.post("/api/v1/events", json=sample_event_payload)
+        assert response.status_code == 422
+
+    def test_claim_with_cause_is_accepted(
+        self,
+        client: TestClient,
+        sample_event_payload: dict,
+    ) -> None:
+        sample_event_payload["event_type"] = "031"
+        sample_event_payload["claim_cause_code"] = "03"
+        sample_event_payload["claim_description"] = "Faltaron 20 unidades."
+        response = client.post("/api/v1/events", json=sample_event_payload)
+        assert response.status_code == 200
+        assert response.json()["status"] == "ACCEPTED"
+
+    def test_claim_cause_rejected_on_non_claim_event(
+        self,
+        client: TestClient,
+        sample_event_payload: dict,
+    ) -> None:
+        sample_event_payload["claim_cause_code"] = "01"
+        response = client.post("/api/v1/events", json=sample_event_payload)
+        assert response.status_code == 422
+
+    def test_tacit_acceptance_event_is_not_accepted(
+        self,
+        client: TestClient,
+        sample_event_payload: dict,
+    ) -> None:
+        """034 is registered by the issuer, so this API must not accept it."""
+        sample_event_payload["event_type"] = "034"
+        response = client.post("/api/v1/events", json=sample_event_payload)
+        assert response.status_code == 422
+
+    def test_environment_uses_the_canonical_spelling(
+        self,
+        client: TestClient,
+        sample_event_payload: dict,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Events use the same environment literals as every other endpoint."""
+        seen: dict[str, str] = {}
+        original_init = DianClient.__init__
+
+        def spy_init(
+            self: DianClient,
+            endpoint_url: str | None = None,
+            bundle: object | None = None,
+        ) -> None:
+            original_init(self, endpoint_url, bundle)  # type: ignore[arg-type]
+            seen["endpoint_url"] = self.endpoint_url
+
+        monkeypatch.setattr(DianClient, "__init__", spy_init)
+        sample_event_payload["environment"] = "produccion"
+        response = client.post("/api/v1/events", json=sample_event_payload)
+        assert response.status_code == 200
+        assert seen["endpoint_url"] == resolve_wsdl_url("produccion")
+
+    def test_uppercase_environment_is_rejected(
+        self,
+        client: TestClient,
+        sample_event_payload: dict,
+    ) -> None:
+        # El endpoint usa una sola grafia canonica (habilitacion/produccion),
+        # como el resto de la API; no hay normalizador. El ERP ya mapea
+        # dian_config.environment (PRUEBA/PRODUCCION) antes de llamar, igual que
+        # en el envio de documentos. Este test guarda el contrato contra la
+        # reintroduccion de un alias permisivo.
+        sample_event_payload["environment"] = "PRUEBA"
+        response = client.post("/api/v1/events", json=sample_event_payload)
+        assert response.status_code == 422
+
+    def test_functional_rejection_is_200_with_rejected_status(
+        self,
+        client: TestClient,
+        sample_event_payload: dict,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        async def fake_rejection(self: DianClient, content_b64: str) -> DianResponse:
+            del self, content_b64
+            return DianResponse(
+                is_valid=False,
+                status_code="99",
+                status_description="Documento con errores",
+                error_messages=["Regla: AAD06, Rechazo: el valor UUID no esta correctamente calculado"],
+                tracking_id="event-track-err",
+                xml_bytes=b"<ApplicationResponse>dian</ApplicationResponse>",
+            )
+
+        monkeypatch.setattr(DianClient, "send_event_update_status", fake_rejection)
+        response = client.post("/api/v1/events", json=sample_event_payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "REJECTED"
+        assert "AAD06" in data["messages"][0]
+        artifacts = data["artifacts"]
+        assert artifacts["dian_response_xml_filename"] == "dian_030_SETP990000123.xml"
+        assert (
+            base64.b64decode(artifacts["dian_response_xml_base64"])
+            == b"<ApplicationResponse>dian</ApplicationResponse>"
+        )
+
+    def test_emit_event_returns_503_when_credentials_are_missing(
+        self,
+        client: TestClient,
+        sample_event_payload: dict,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(settings.dian, "software_id", "")
+        monkeypatch.setattr(settings.dian, "software_pin", "")
+        sample_event_payload.pop("submission_options")
+        response = client.post("/api/v1/events", json=sample_event_payload)
+        assert response.status_code == 503
+        assert "Missing required event settings" in response.json()["detail"]
+
+    def test_emit_event_returns_504_on_dian_timeout(
+        self,
+        client: TestClient,
+        sample_event_payload: dict,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        async def fake_timeout(self: DianClient, content_b64: str) -> DianResponse:
+            del self, content_b64
+            raise DianTimeoutError("Timeout calling DIAN SendEventUpdateStatus")
+
+        monkeypatch.setattr(DianClient, "send_event_update_status", fake_timeout)
+        response = client.post("/api/v1/events", json=sample_event_payload)
+        assert response.status_code == 504
 
 
 class TestCustomerLookup:

@@ -1,0 +1,16 @@
+{
+  "event_type": "031",
+  "environment": "habilitacion",
+  "event_number": "EV000003",
+  "document_cufe": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "document_number": "SETP990000123",
+  "document_issue_date": "2026-07-10",
+  "supplier_nit": "800199436",
+  "supplier_name": "Proveedor Ejemplo S.A.S.",
+  "claim_cause_code": "03",
+  "claim_description": "Se recibieron 80 de las 100 unidades facturadas.",
+  "submission_options": {
+    "software_id": "software-demo-id",
+    "software_pin": "pin-demo-001"
+  }
+}
