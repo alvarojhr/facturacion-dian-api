@@ -36,7 +36,7 @@ from facturacion_dian_api.core.xml.namespaces import (
 )
 from lxml import etree
 
-# â”€â”€â”€ Test Certificate Generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─── Test Certificate Generation ───────────────────────────────
 
 
 def _generate_test_p12(path: Path, password: bytes = b"test123") -> None:
@@ -194,7 +194,7 @@ def credit_note_request() -> DocumentSubmitRequest:
         credit_note_number="NC000001",
         referenced_invoice_number="SETT000001",
         referenced_invoice_cufe="abc123def456",
-        credit_note_reason="DevoluciÃ³n parcial de mercancÃ­a",
+        credit_note_reason="Devolución parcial de mercancía",
     )
 
 
@@ -554,7 +554,7 @@ class TestXAdESSigning:
             ")",
             namespaces=NS,
         )
-        assert description == "PolÃ­tica de firma para facturas electrÃ³nicas de la RepÃºblica de Colombia."
+        assert description == "Política de firma para facturas electrónicas de la República de Colombia."
         assert digest_value == "dMoMvtcG5aIzgYo0tIsSQeVJBDnUnfSOfBpxXrmor0Y="
 
     def test_signed_xml_is_well_formed(
