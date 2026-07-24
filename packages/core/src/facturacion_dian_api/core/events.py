@@ -51,10 +51,16 @@ def _resolve_event_number(req: EventSubmitRequest) -> str:
 
     DIAN wants a consecutive owned by whoever generates the event, unique per
     event type (rule AAD05b). This service holds no sequence, so the caller
-    should send ``event_number``. The fallback derives a value from the
-    referenced CUFE, which keeps a retry reproducing the exact same CUDE and
-    stays unique per (invoice, event type) — the only combination DIAN allows
-    once anyway.
+    should send ``event_number``. The fallback derives a stable value from the
+    referenced CUFE: unique per (invoice, event type) — the only combination
+    DIAN accepts once anyway — and identical across retries of the same event,
+    so a retry keeps the same consecutive.
+
+    Note this does not make the *CUDE* stable across retries: the event
+    re-stamps its date/time from the clock on each call to satisfy rule AAD09e
+    (issue date = signing date), and the timestamp feeds the CUDE seed. A retry
+    is a freshly signed document with the same event number but a new CUDE,
+    which is correct for RADIAN — events consume no numbering range.
     """
     explicit = (req.event_number or "").strip()
     if explicit:

@@ -401,21 +401,40 @@ class TestEmitEvent:
         # DIAN no devolvio XML en el stub, asi que el artefacto propio queda nulo.
         assert artifacts["dian_response_xml_base64"] is None
 
-    def test_emit_event_is_deterministic_for_retries(
+    def test_emit_event_is_deterministic_for_fixed_inputs(
         self,
         client: TestClient,
         sample_event_payload: dict,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Events consume no numbering range: a retry must reproduce the CUDE."""
+        """Same inputs + same instant → same CUDE.
+
+        The event's date/time are re-stamped from the clock on every call
+        (rule AAD09e forces issue date = signing date), so two calls at
+        different times legitimately yield different CUDEs. Determinism is a
+        property of the *inputs*, so the clock is frozen to isolate it.
+        """
+        frozen = datetime(2026, 7, 23, 9, 15, 0, tzinfo=timezone(timedelta(hours=-5)))
+        monkeypatch.setattr("facturacion_dian_api.core.events.colombia_now", lambda: frozen)
+
         first = client.post("/api/v1/events", json=sample_event_payload)
         second = client.post("/api/v1/events", json=sample_event_payload)
         assert first.json()["cude"] == second.json()["cude"]
 
-    def test_emit_event_without_event_number_stays_stable(
+    def test_derived_event_number_is_stable_across_calls(
         self,
         client: TestClient,
         sample_event_payload: dict,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
+        """Omitting event_number derives it from the CUFE, deterministically.
+
+        With the clock frozen, the only field that could vary between two calls
+        is the derived consecutive; an equal CUDE proves it is stable.
+        """
+        frozen = datetime(2026, 7, 23, 9, 15, 0, tzinfo=timezone(timedelta(hours=-5)))
+        monkeypatch.setattr("facturacion_dian_api.core.events.colombia_now", lambda: frozen)
+
         sample_event_payload.pop("event_number")
         first = client.post("/api/v1/events", json=sample_event_payload)
         second = client.post("/api/v1/events", json=sample_event_payload)
@@ -494,13 +513,13 @@ class TestEmitEvent:
         response = client.post("/api/v1/events", json=sample_event_payload)
         assert response.status_code == 422
 
-    def test_uppercase_environment_alias_is_accepted(
+    def test_environment_uses_the_canonical_spelling(
         self,
         client: TestClient,
         sample_event_payload: dict,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """ERPs coded against the draft send PRUEBA/PRODUCCION."""
+        """Events use the same environment literals as every other endpoint."""
         seen: dict[str, str] = {}
         original_init = DianClient.__init__
 
@@ -513,10 +532,21 @@ class TestEmitEvent:
             seen["endpoint_url"] = self.endpoint_url
 
         monkeypatch.setattr(DianClient, "__init__", spy_init)
-        sample_event_payload["environment"] = "PRODUCCION"
+        sample_event_payload["environment"] = "produccion"
         response = client.post("/api/v1/events", json=sample_event_payload)
         assert response.status_code == 200
         assert seen["endpoint_url"] == resolve_wsdl_url("produccion")
+
+    def test_uppercase_environment_is_rejected(
+        self,
+        client: TestClient,
+        sample_event_payload: dict,
+    ) -> None:
+        # El ERP mapea dian_config.environment (PRUEBA/PRODUCCION) a la grafia
+        # canonica al construir el payload, igual que en el envio de documentos.
+        sample_event_payload["environment"] = "PRUEBA"
+        response = client.post("/api/v1/events", json=sample_event_payload)
+        assert response.status_code == 422
 
     def test_functional_rejection_is_200_with_rejected_status(
         self,
