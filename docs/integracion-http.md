@@ -17,6 +17,7 @@ http://localhost:8000
 | `POST` | `/api/v1/attached-documents` | Construir ZIP interoperable AttachedDocument |
 | `POST` | `/api/v1/customers/lookup` | Consultar adquiriente en DIAN |
 | `POST` | `/api/v1/numbering-ranges/lookup` | Consultar rangos de numeracion autorizados |
+| `POST` | `/api/v1/documents/download-by-key` | Descargar el XML de un documento por CUFE/CUDE |
 | `GET` | `/health` | Verificar estado del runtime |
 
 ## Envio de documentos
@@ -103,6 +104,27 @@ curl --request POST "http://localhost:8000/api/v1/numbering-ranges/lookup" `
   --header "Content-Type: application/json" `
   --data "@docs/examples/numbering-ranges-lookup.json"
 ```
+
+## Descarga de XML por CUFE/CUDE
+
+`POST /api/v1/documents/download-by-key` recupera de DIAN el XML de un documento
+ya emitido, a partir de su CUFE (factura) o CUDE (nota / documento equivalente).
+Sirve para reconstruir un archivo perdido sin reenviar el documento.
+
+Payloads canonicos:
+
+- [Download by key](examples/download-by-key.json)
+- [Respuesta](examples/respuesta-download-by-key.json)
+
+```powershell
+curl --request POST "http://localhost:8000/api/v1/documents/download-by-key" `
+  --header "Content-Type: application/json" `
+  --data "@docs/examples/download-by-key.json"
+```
+
+El XML llega en `xml_base64`. Si DIAN no tiene el documento, la respuesta sigue
+siendo `200` con `success: false` y `error_message` diligenciado: es un resultado
+funcional, no un fallo de transporte (ver [Politica HTTP](#politica-http)).
 
 ## Politica HTTP
 

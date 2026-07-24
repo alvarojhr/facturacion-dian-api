@@ -1,0 +1,15 @@
+{
+  "success": true,
+  "document_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "xml_base64": "PEludm9pY2U+ZGVtbzwvSW52b2ljZT4=",
+  "xml_filename": "dian_aaaaaaaaaaaaaaaaaaaa.xml",
+  "status": "DOWNLOADED",
+  "error_message": null,
+  "raw_response": {
+    "success": true,
+    "xml_filename": null,
+    "status": "DOWNLOADED",
+    "error_message": "",
+    "raw_xml": "<s:Envelope>...</s:Envelope>"
+  }
+}

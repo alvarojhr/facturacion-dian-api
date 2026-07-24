@@ -7,7 +7,7 @@ import io
 import zipfile
 
 import pytest
-from facturacion_dian_api.core.config import settings
+from facturacion_dian_api.core.config import resolve_wsdl_url, settings
 from facturacion_dian_api.core.dian.client import DianClient
 from facturacion_dian_api.core.dian.response_parser import DianResponse
 from facturacion_dian_api.core.errors import DianTimeoutError
@@ -15,6 +15,8 @@ from facturacion_dian_api.server.contracts import DocumentSubmissionRequest
 from facturacion_dian_api.server.mappers import to_core_submission_request
 from fastapi.testclient import TestClient
 from lxml import etree
+
+from tests.conftest import DOWNLOADED_XML_BYTES, KNOWN_DOCUMENT_KEY, UNKNOWN_DOCUMENT_KEY
 
 
 class TestHealthEndpoint:
@@ -420,3 +422,66 @@ class TestNumberingRangeLookup:
         data = response.json()
         assert len(data["ranges"]) == 2
         assert data["ranges"][0]["prefix"] == "FDK"
+
+
+class TestDownloadByKey:
+    """Test XML download by CUFE/CUDE through the public API."""
+
+    def test_download_returns_xml_base64(self, client: TestClient) -> None:
+        response = client.post(
+            "/api/v1/documents/download-by-key",
+            json={"document_key": KNOWN_DOCUMENT_KEY},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["document_key"] == KNOWN_DOCUMENT_KEY
+        assert base64.b64decode(data["xml_base64"]) == DOWNLOADED_XML_BYTES
+        assert data["xml_filename"]
+        assert data["status"] == "DOWNLOADED"
+        assert data["error_message"] is None
+
+    def test_download_unknown_key_returns_200_with_failure(self, client: TestClient) -> None:
+        # Un documento inexistente es un resultado funcional de DIAN, no un
+        # fallo de transporte: se responde 200 con success=False, igual que el
+        # lookup de adquiriente.
+        response = client.post(
+            "/api/v1/documents/download-by-key",
+            json={"document_key": UNKNOWN_DOCUMENT_KEY},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert data["xml_base64"] is None
+        assert data["xml_filename"] is None
+        assert data["error_message"]
+
+    def test_download_honors_requested_environment(
+        self,
+        client: TestClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        seen: dict[str, str] = {}
+        original_init = DianClient.__init__
+
+        def spy_init(
+            self: DianClient,
+            endpoint_url: str | None = None,
+            bundle: object | None = None,
+        ) -> None:
+            original_init(self, endpoint_url, bundle)  # type: ignore[arg-type]
+            seen["endpoint_url"] = self.endpoint_url
+
+        monkeypatch.setattr(DianClient, "__init__", spy_init)
+
+        response = client.post(
+            "/api/v1/documents/download-by-key",
+            json={"environment": "produccion", "document_key": KNOWN_DOCUMENT_KEY},
+        )
+
+        assert response.status_code == 200
+        assert seen["endpoint_url"] == resolve_wsdl_url("produccion")
+
+    def test_download_requires_document_key(self, client: TestClient) -> None:
+        response = client.post("/api/v1/documents/download-by-key", json={})
+        assert response.status_code == 422

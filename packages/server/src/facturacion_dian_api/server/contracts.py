@@ -18,6 +18,8 @@ from facturacion_dian_api.server.examples import (
     DOCUMENT_STATUS_RESPONSE_EXAMPLE,
     DOCUMENT_SUBMISSION_REQUEST_EXAMPLES,
     DOCUMENT_SUBMISSION_RESPONSE_EXAMPLE,
+    DOWNLOAD_BY_KEY_REQUEST_EXAMPLE,
+    DOWNLOAD_BY_KEY_RESPONSE_EXAMPLE,
     HEALTH_RESPONSE_EXAMPLE,
     NUMBERING_RANGE_LOOKUP_REQUEST_EXAMPLE,
     NUMBERING_RANGE_LOOKUP_RESPONSE_EXAMPLE,
@@ -310,6 +312,33 @@ class NumberingRangeLookupResponse(BaseModel):
     )
 
     ranges: list[NumberingRangePayload] = Field(default_factory=list)
+
+
+class DownloadByKeyRequest(BaseModel):
+    """Request to download a document XML by its CUFE/CUDE."""
+
+    model_config = ConfigDict(
+        json_schema_extra=cast(dict[str, Any], {"example": DOWNLOAD_BY_KEY_REQUEST_EXAMPLE})
+    )
+
+    environment: Environment | None = None
+    document_key: str = Field(description="CUFE or CUDE of the document")
+
+
+class DownloadByKeyResponse(BaseModel):
+    """Response with the downloaded XML."""
+
+    model_config = ConfigDict(
+        json_schema_extra=cast(dict[str, Any], {"example": DOWNLOAD_BY_KEY_RESPONSE_EXAMPLE})
+    )
+
+    success: bool
+    document_key: str
+    xml_base64: str | None = None
+    xml_filename: str | None = None
+    status: str = ""
+    error_message: str | None = None
+    raw_response: dict[str, Any] = Field(default_factory=dict)
 
 
 class HealthResponse(BaseModel):

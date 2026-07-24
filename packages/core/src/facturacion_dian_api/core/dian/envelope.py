@@ -47,6 +47,9 @@ ACTION_GET_ACQUIRER = (
 ACTION_GET_NUMBERING_RANGE = (
     "http://wcf.dian.colombia/IWcfDianCustomerServices/GetNumberingRange"
 )
+ACTION_GET_XML_BY_DOCUMENT_KEY = (
+    "http://wcf.dian.colombia/IWcfDianCustomerServices/GetXmlByDocumentKey"
+)
 
 
 def _qn(ns: str, tag: str) -> str:
@@ -205,6 +208,23 @@ def build_get_numbering_range_envelope(
     _sub(lookup, _qn(NS_WCF, "accountCode"), account_code)
     _sub(lookup, _qn(NS_WCF, "accountCodeT"), account_code_t)
     _sub(lookup, _qn(NS_WCF, "softwareCode"), software_code)
+
+    return etree.tostring(envelope, xml_declaration=True, encoding="UTF-8")
+
+
+def build_get_xml_by_document_key_envelope(
+    endpoint_url: str,
+    document_key: str,
+) -> bytes:
+    """Build SOAP 1.2 envelope for GetXmlByDocumentKey operation."""
+    envelope = etree.Element(_qn(NS_SOAP, "Envelope"), nsmap=NSMAP_SOAP)
+    header = _sub(envelope, _qn(NS_SOAP, "Header"))
+
+    _add_wsa_headers(header, ACTION_GET_XML_BY_DOCUMENT_KEY, endpoint_url)
+
+    body = _sub(envelope, _qn(NS_SOAP, "Body"))
+    get_xml = _sub(body, _qn(NS_WCF, "GetXmlByDocumentKey"))
+    _sub(get_xml, _qn(NS_WCF, "trackId"), document_key)
 
     return etree.tostring(envelope, xml_declaration=True, encoding="UTF-8")
 

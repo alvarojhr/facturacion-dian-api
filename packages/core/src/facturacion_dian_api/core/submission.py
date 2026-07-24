@@ -23,6 +23,7 @@ from facturacion_dian_api.core.models import (
     AttachedDocumentBuildResponse,
     DocumentSubmissionResult,
     DocumentSubmitRequest,
+    DownloadByKeyResult,
     Environment,
     SubmissionArtifacts,
 )
@@ -255,6 +256,30 @@ class DocumentSubmissionService:
             messages=_collect_messages(dian_response),
             dian_response=dian_response.to_dict(),
             artifacts=artifacts,
+        )
+
+    async def download_by_key(
+        self,
+        document_key: str,
+        *,
+        environment: Environment | None = None,
+    ) -> DownloadByKeyResult:
+        resolved: Environment = environment or settings.dian.environment
+        client = DianClient(endpoint_url=resolve_wsdl_url(resolved))
+        result = await client.get_xml_by_document_key(document_key)
+
+        xml_base64 = None
+        if result.xml_bytes:
+            xml_base64 = _base64_encode(result.xml_bytes)
+
+        return DownloadByKeyResult(
+            success=result.success,
+            document_key=document_key,
+            xml_base64=xml_base64,
+            xml_filename=f"dian_{document_key[:20]}.xml" if result.success else None,
+            status=result.status,
+            error_message=result.error_message or None,
+            raw_response=result.to_dict(),
         )
 
     def build_attached_document(

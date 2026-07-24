@@ -10,11 +10,17 @@ from facturacion_dian_api.core.dian.client import DianClient
 from facturacion_dian_api.core.dian.response_parser import (
     AcquirerResponse,
     DianResponse,
+    DownloadXmlResponse,
     NumberingRange,
     NumberingRangeResponse,
 )
 from facturacion_dian_api.server.app import app
 from fastapi.testclient import TestClient
+
+# Claves de documento usadas por el stub de descarga por CUFE/CUDE.
+DOWNLOADED_XML_BYTES = b"<Invoice><ID>FDK000001</ID></Invoice>"
+KNOWN_DOCUMENT_KEY = "a" * 96
+UNKNOWN_DOCUMENT_KEY = "0" * 96
 
 
 @pytest.fixture
@@ -112,12 +118,31 @@ def stub_live_dian_calls(
             ]
         )
 
+    async def fake_get_xml_by_document_key(
+        self: DianClient,
+        document_key: str,
+    ) -> DownloadXmlResponse:
+        del self
+        if document_key == UNKNOWN_DOCUMENT_KEY:
+            return DownloadXmlResponse(
+                success=False,
+                status="NOT_FOUND",
+                error_message="DIAN did not return XML for the given document key",
+            )
+
+        return DownloadXmlResponse(
+            success=True,
+            xml_bytes=DOWNLOADED_XML_BYTES,
+            status="DOWNLOADED",
+        )
+
     monkeypatch.setattr(DianClient, "send_test_set_async", fake_submit)
     monkeypatch.setattr(DianClient, "send_bill_sync", fake_submit)
     monkeypatch.setattr(DianClient, "get_status", fake_status)
     monkeypatch.setattr(DianClient, "get_status_zip", fake_status)
     monkeypatch.setattr(DianClient, "get_acquirer", fake_get_acquirer)
     monkeypatch.setattr(DianClient, "get_numbering_range", fake_get_numbering_range)
+    monkeypatch.setattr(DianClient, "get_xml_by_document_key", fake_get_xml_by_document_key)
     monkeypatch.setattr(
         "facturacion_dian_api.core.submission.get_certificate_bundle",
         lambda: SimpleNamespace(),

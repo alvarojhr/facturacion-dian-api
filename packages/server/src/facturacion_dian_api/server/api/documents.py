@@ -10,6 +10,8 @@ from facturacion_dian_api.server.contracts import (
     AttachedDocumentResponse,
     DocumentSubmissionRequest,
     DocumentSubmissionResponse,
+    DownloadByKeyRequest,
+    DownloadByKeyResponse,
 )
 from facturacion_dian_api.server.examples import (
     ATTACHED_DOCUMENT_REQUEST_EXAMPLE,
@@ -82,6 +84,31 @@ async def get_document_status(tracking_id: str) -> DocumentSubmissionResponse:
 
     result = await service.get_status(tracking_id)
     return to_public_submission_response(result)
+
+
+@router.post(
+    "/documents/download-by-key",
+    response_model=DownloadByKeyResponse,
+    summary="Descargar XML por CUFE/CUDE",
+    responses={
+        200: {"description": "XML descargado o error funcional de DIAN."},
+        502: {"description": "Falla upstream con DIAN.", "content": {"application/json": {"example": ERROR_502_EXAMPLE}}},
+        504: {"description": "Timeout llamando a DIAN.", "content": {"application/json": {"example": ERROR_504_EXAMPLE}}},
+    },
+)
+async def download_by_key(req: DownloadByKeyRequest) -> DownloadByKeyResponse:
+    """Download the signed XML for a document by its CUFE/CUDE."""
+
+    result = await service.download_by_key(req.document_key, environment=req.environment)
+    return DownloadByKeyResponse(
+        success=result.success,
+        document_key=result.document_key,
+        xml_base64=result.xml_base64,
+        xml_filename=result.xml_filename,
+        status=result.status,
+        error_message=result.error_message,
+        raw_response=result.raw_response,
+    )
 
 
 @router.post(

@@ -11,15 +11,18 @@ from facturacion_dian_api.core.dian.envelope import (
     build_get_numbering_range_envelope,
     build_get_status_envelope,
     build_get_status_zip_envelope,
+    build_get_xml_by_document_key_envelope,
     build_send_bill_sync_envelope,
     build_send_test_set_async_envelope,
 )
 from facturacion_dian_api.core.dian.response_parser import (
     AcquirerResponse,
     DianResponse,
+    DownloadXmlResponse,
     NumberingRangeResponse,
     parse_get_acquirer_response,
     parse_get_numbering_range_response,
+    parse_get_xml_by_document_key_response,
     parse_send_bill_response,
 )
 from facturacion_dian_api.core.errors import DianTimeoutError, DianTransportError, DianUpstreamError
@@ -101,6 +104,13 @@ class DianClient:
         if response.status_code != 200:
             raise DianUpstreamError(response.status_code, response.text[:500])
         return parse_get_numbering_range_response(response.content)
+
+    async def get_xml_by_document_key(self, document_key: str) -> DownloadXmlResponse:
+        envelope = build_get_xml_by_document_key_envelope(self.endpoint_url, document_key)
+        response = await self._post_signed_envelope(envelope, "GetXmlByDocumentKey")
+        if response.status_code != 200:
+            raise DianUpstreamError(response.status_code, response.text[:500])
+        return parse_get_xml_by_document_key_response(response.content)
 
     def _get_bundle(self) -> CertificateBundle:
         if self._bundle is None:
