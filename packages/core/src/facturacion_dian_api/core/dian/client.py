@@ -13,6 +13,7 @@ from facturacion_dian_api.core.dian.envelope import (
     build_get_status_zip_envelope,
     build_get_xml_by_document_key_envelope,
     build_send_bill_sync_envelope,
+    build_send_event_update_status_envelope,
     build_send_test_set_async_envelope,
 )
 from facturacion_dian_api.core.dian.response_parser import (
@@ -64,6 +65,15 @@ class DianClient:
             ts_id,
         )
         return await self._send_soap(envelope, "SendTestSetAsync")
+
+    async def send_event_update_status(self, content_b64: str) -> DianResponse:
+        """Register a RADIAN event (ApplicationResponse) before DIAN.
+
+        The operation is synchronous in both environments, so there is no
+        habilitación/producción split like ``submit_document`` has.
+        """
+        envelope = build_send_event_update_status_envelope(self.endpoint_url, content_b64)
+        return await self._send_soap(envelope, "SendEventUpdateStatus")
 
     async def get_status(self, tracking_id: str) -> DianResponse:
         envelope = build_get_status_envelope(self.endpoint_url, tracking_id)

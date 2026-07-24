@@ -11,9 +11,11 @@ import hashlib
 from facturacion_dian_api.core.cufe.calculator import (
     CudeFields,
     CufeFields,
+    EventCudeFields,
     build_qr_url,
     calculate_cude,
     calculate_cufe,
+    calculate_event_cude,
     calculate_software_security_code,
 )
 
@@ -251,6 +253,67 @@ class TestCudeCalculation:
         )
         expected = hashlib.sha384(expected_seed.encode("utf-8")).hexdigest()
         assert calculate_cude(fields) == expected
+
+
+class TestEventCudeCalculation:
+    """Test the CUDE of a RADIAN event (ApplicationResponse)."""
+
+    # Vector oficial del Anexo Tecnico v1.9 § 11.5.1 (identico al del Anexo
+    # RADIAN v1.1 § 12.1.1.1). Es el unico control que atrapa un reordenamiento
+    # de la semilla, asi que no lo cambies para "arreglar" un cambio de codigo.
+    OFFICIAL_FIELDS = EventCudeFields(
+        num_de="1",
+        fec_emi="2019-04-30",
+        hor_emi="19:48:50-05:00",
+        nit_fe="99998888",
+        doc_adq="800197268",
+        response_code="030",
+        document_id="FE123",
+        document_type_code="01",
+        software_pin="11111",
+    )
+    OFFICIAL_SEED = "12019-04-3019:48:50-05:0099998888800197268030FE1230111111"
+    OFFICIAL_CUDE = (
+        "0d91ba25b01f5e7dbda870a11b274501d3a62a73e91932c473c86c93f12a142a"
+        "2ac45876efcde3e679024a01c0be41f9"
+    )
+
+    def test_event_cude_matches_official_vector(self) -> None:
+        assert calculate_event_cude(self.OFFICIAL_FIELDS) == self.OFFICIAL_CUDE
+
+    def test_event_cude_seed_is_plain_concatenation(self) -> None:
+        expected = hashlib.sha384(self.OFFICIAL_SEED.encode("utf-8")).hexdigest()
+        assert calculate_event_cude(self.OFFICIAL_FIELDS) == expected
+
+    def test_event_cude_returns_96_char_hex(self) -> None:
+        cude = calculate_event_cude(self.OFFICIAL_FIELDS)
+        assert len(cude) == 96
+        assert cude == cude.lower()
+        int(cude, 16)
+
+    def test_event_cude_carries_no_tipo_ambiente(self) -> None:
+        """The event seed ends at the software PIN.
+
+        Appending the environment code — as the document CUFE/CUDE does — was
+        the historical mistake this test locks out.
+        """
+        with_ambiente = hashlib.sha384(
+            (self.OFFICIAL_SEED + "2").encode("utf-8")
+        ).hexdigest()
+        assert calculate_event_cude(self.OFFICIAL_FIELDS) != with_ambiente
+
+    def test_event_cude_changes_with_event_code(self) -> None:
+        claim = EventCudeFields(
+            **{**self.OFFICIAL_FIELDS.__dict__, "response_code": "031"}
+        )
+        assert calculate_event_cude(claim) != calculate_event_cude(self.OFFICIAL_FIELDS)
+
+    def test_event_cude_changes_with_issue_time(self) -> None:
+        """A UTC-stamped time yields a different CUDE than the Colombian one."""
+        shifted = EventCudeFields(
+            **{**self.OFFICIAL_FIELDS.__dict__, "hor_emi": "19:48:50-00:00"}
+        )
+        assert calculate_event_cude(shifted) != calculate_event_cude(self.OFFICIAL_FIELDS)
 
 
 class TestSoftwareSecurityCode:

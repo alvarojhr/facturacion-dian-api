@@ -16,6 +16,12 @@ Environment = Literal["habilitacion", "produccion"]
 DocumentStatus = Literal["accepted", "rejected", "error"]
 CustomerDocumentType = Literal["FINAL_CONSUMER", "NIT", "CC", "CE", "TI", "PASSPORT"]
 
+# Eventos RADIAN del receptor de la factura. El 034 (aceptación tácita) no se
+# implementa: lo registra el emisor, no el adquiriente.
+EventType = Literal["030", "031", "032", "033"]
+ClaimCauseCode = Literal["01", "02", "03", "04"]
+EventStatus = Literal["ACCEPTED", "REJECTED", "FAILED"]
+
 
 class DocumentLine(BaseModel):
     """A single commercial line item."""
@@ -234,6 +240,73 @@ class DownloadByKeyResult(BaseModel):
     status: str = ""
     error_message: str | None = None
     raw_response: dict[str, Any] = Field(default_factory=dict)
+
+
+class EventReceiverPerson(BaseModel):
+    """Person who took delivery of the invoice, goods or services.
+
+    Feeds ``cac:DocumentResponse/cac:IssuerParty/cac:Person``. The Anexo
+    Técnico v1.9 makes this group mandatory for the 032 event (§6.5.5.5,
+    AAH11: "Debe ser obligatorio informar") and validates it on 030/033 too,
+    so integrators should always send it.
+    """
+
+    document_number: str
+    document_type: str = Field(default="13", description="DIAN @schemeName code")
+    first_name: str
+    family_name: str
+    job_title: str | None = None
+    organization_department: str | None = None
+
+
+class EventSubmitRequest(BaseModel):
+    """Flattened RADIAN event request used internally by the domain layer."""
+
+    event_type: EventType
+    environment: Environment | None = None
+    software_id: str | None = None
+    software_pin: str | None = None
+    # Consecutivo del evento (ApplicationResponse/cbc:ID). Lo genera el
+    # llamador: este servicio es stateless y no lleva secuencias.
+    event_number: str | None = None
+    document_cufe: str
+    document_number: str
+    document_issue_date: str | None = None
+    document_type_code: str = "01"
+    supplier_nit: str
+    supplier_name: str
+    supplier_dv: str | None = None
+    total_amount: int | None = None
+    claim_cause_code: ClaimCauseCode | None = None
+    claim_description: str | None = None
+    receiver_person: EventReceiverPerson | None = None
+    client_reference: str | None = None
+
+
+class EventArtifacts(BaseModel):
+    """XML artifacts produced while registering a RADIAN event.
+
+    ``application_response_*`` carry the event signed by us (the invoice
+    receiver); ``dian_response_*`` carry the ApplicationResponse the DIAN
+    signs back when it accepts or rejects the event.
+    """
+
+    application_response_xml_base64: str | None = None
+    application_response_xml_filename: str | None = None
+    dian_response_xml_base64: str | None = None
+    dian_response_xml_filename: str | None = None
+
+
+class EventSubmissionResult(BaseModel):
+    """Result returned by the RADIAN event service."""
+
+    status: EventStatus
+    cude: str | None = None
+    tracking_id: str | None = None
+    messages: list[str] = Field(default_factory=list)
+    dian_response: dict[str, Any] = Field(default_factory=dict)
+    artifacts: EventArtifacts | None = None
+    client_reference: str | None = None
 
 
 class HealthStatus(BaseModel):

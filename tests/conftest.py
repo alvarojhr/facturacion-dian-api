@@ -118,6 +118,19 @@ def stub_live_dian_calls(
             ]
         )
 
+    async def fake_send_event_update_status(
+        self: DianClient,
+        content_b64: str,
+    ) -> DianResponse:
+        del self, content_b64
+        return DianResponse(
+            is_valid=True,
+            status_code="00",
+            status_description="Procesado Correctamente",
+            status_message="",
+            tracking_id="event-track-123",
+        )
+
     async def fake_get_xml_by_document_key(
         self: DianClient,
         document_key: str,
@@ -143,14 +156,16 @@ def stub_live_dian_calls(
     monkeypatch.setattr(DianClient, "get_acquirer", fake_get_acquirer)
     monkeypatch.setattr(DianClient, "get_numbering_range", fake_get_numbering_range)
     monkeypatch.setattr(DianClient, "get_xml_by_document_key", fake_get_xml_by_document_key)
-    monkeypatch.setattr(
-        "facturacion_dian_api.core.submission.get_certificate_bundle",
-        lambda: SimpleNamespace(),
-    )
-    monkeypatch.setattr(
-        "facturacion_dian_api.core.submission.sign_document_xml",
-        lambda xml_root, bundle: b"<Signed>ok</Signed>",
-    )
+    monkeypatch.setattr(DianClient, "send_event_update_status", fake_send_event_update_status)
+    for module in ("submission", "events"):
+        monkeypatch.setattr(
+            f"facturacion_dian_api.core.{module}.get_certificate_bundle",
+            lambda: SimpleNamespace(),
+        )
+        monkeypatch.setattr(
+            f"facturacion_dian_api.core.{module}.sign_document_xml",
+            lambda xml_root, bundle: b"<Signed>ok</Signed>",
+        )
 
 
 @pytest.fixture
@@ -211,6 +226,28 @@ def sample_invoice_payload() -> dict:
             "software_pin": "12345",
             "technical_key": "fc8eac422eba16e22ffd8c6f94b3f40a6e38162c",
             "test_set_id": "test-set-123",
+        },
+    }
+
+
+@pytest.fixture
+def sample_event_payload() -> dict:
+    """Sample RADIAN acuse de recibo (030) payload for the public API."""
+
+    return {
+        "event_type": "030",
+        "environment": "habilitacion",
+        "event_number": "EV000001",
+        "document_cufe": "b" * 96,
+        "document_number": "SETP990000123",
+        "document_issue_date": "2026-07-10",
+        "supplier_nit": "800199436",
+        "supplier_name": "Proveedor Ejemplo S.A.S.",
+        "total_amount": 119000,
+        "client_reference": "acuse-erp-1001",
+        "submission_options": {
+            "software_id": "software-123",
+            "software_pin": "12345",
         },
     }
 

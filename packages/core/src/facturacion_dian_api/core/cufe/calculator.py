@@ -3,7 +3,8 @@
 Implements SHA-384 hashing per DIAN Anexo Técnico v1.9:
 - Section 11.1.2: CUFE generation (Factura Electrónica)
 - Section 11.1.4: CUDE generation (Doc. Equivalente POS, Nota Crédito)
-- Software Security Code
+- Section 11.5: CUDE generation for the ApplicationResponse (RADIAN events)
+- Section 11.8: Software Security Code
 
 Reference: https://www.dian.gov.co/impuestos/factura-electronica/Documents/
            Anexo-Tecnico-Factura-Electronica-de-Venta-vr-1-9.pdf
@@ -88,6 +89,37 @@ class CudeFields:
     tipo_ambiente: str
 
 
+@dataclass(frozen=True)
+class EventCudeFields:
+    """Fields required for the CUDE of a RADIAN event (ApplicationResponse).
+
+    Per DIAN Anexo Técnico Factura Electrónica de Venta v1.9, Section 11.5
+    (mirrored verbatim in Anexo Técnico RADIAN v1.1, Section 12.1.1):
+
+    CUDE = SHA-384(Num_DE + Fec_Emi + Hor_Emi + NitFE + DocAdq
+                   + ResponseCode + ID + DocumentTypeCode + SoftwarePIN)
+
+    This is **not** the CUDE of ``CudeFields``: the event seed carries no
+    monetary totals, no tax codes and — unlike CUFE/CUDE for documents — **no
+    ``TipoAmbiente`` at the end**. Reusing ``calculate_cude`` here produces a
+    hash DIAN rejects with "Regla: AAD06, el valor UUID no está correctamente
+    calculado".
+
+    The official test vector from Section 11.5.1 is covered by
+    ``tests/test_cufe.py``.
+    """
+
+    num_de: str              # ApplicationResponse/cbc:ID — event number
+    fec_emi: str             # Event issue date "YYYY-MM-DD"
+    hor_emi: str             # Event issue time "HH:MM:SS-05:00"
+    nit_fe: str              # Identification of whoever generates the event
+    doc_adq: str             # Identification of whoever receives the event
+    response_code: str       # Event code ("030" | "031" | "032" | "033")
+    document_id: str         # Prefix + number of the referenced document
+    document_type_code: str  # Type code of the referenced document ("01", …)
+    software_pin: str        # Never present in the XML
+
+
 def calculate_cufe(fields: CufeFields) -> str:
     """Calculate CUFE (Código Único de Factura Electrónica).
 
@@ -134,6 +166,32 @@ def calculate_cude(fields: CudeFields) -> str:
         + fields.num_adq
         + fields.software_pin
         + fields.tipo_ambiente
+    )
+    return hashlib.sha384(seed.encode("utf-8")).hexdigest()
+
+
+def calculate_event_cude(fields: EventCudeFields) -> str:
+    """Calculate the CUDE of a RADIAN event (ApplicationResponse).
+
+    Used for: events 030, 031, 032 and 033 emitted by the invoice receiver.
+
+    The field order below is the one published in Anexo Técnico v1.9 § 11.5;
+    reordering it, padding any value or appending ``tipo_ambiente`` changes the
+    digest and DIAN rejects the event.
+
+    Returns:
+        96-character lowercase hex string (SHA-384 digest).
+    """
+    seed = (
+        fields.num_de
+        + fields.fec_emi
+        + fields.hor_emi
+        + fields.nit_fe
+        + fields.doc_adq
+        + fields.response_code
+        + fields.document_id
+        + fields.document_type_code
+        + fields.software_pin
     )
     return hashlib.sha384(seed.encode("utf-8")).hexdigest()
 

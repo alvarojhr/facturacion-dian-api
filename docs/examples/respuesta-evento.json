@@ -1,0 +1,23 @@
+{
+  "status": "ACCEPTED",
+  "cude": "demo-event-cude-not-real",
+  "tracking_id": "f8809b485030d5f0548451f0f5562649936c45aba286819c052d8dfa432dcb7ed",
+  "client_reference": "acuse-erp-1001",
+  "messages": [
+    "Procesado Correctamente."
+  ],
+  "dian_response": {
+    "is_valid": true,
+    "status_code": "00",
+    "status_description": "Procesado Correctamente.",
+    "status_message": "",
+    "tracking_id": "f8809b485030d5f0548451f0f5562649936c45aba286819c052d8dfa432dcb7ed",
+    "error_messages": []
+  },
+  "artifacts": {
+    "application_response_xml_base64": "PEFwcGxpY2F0aW9uUmVzcG9uc2U+ZGVtbzwvQXBwbGljYXRpb25SZXNwb25zZT4=",
+    "application_response_xml_filename": "ar_030_SETP990000123.xml",
+    "dian_response_xml_base64": "PEFwcGxpY2F0aW9uUmVzcG9uc2U+ZGlhbjwvQXBwbGljYXRpb25SZXNwb25zZT4=",
+    "dian_response_xml_filename": "dian_030_SETP990000123.xml"
+  }
+}

@@ -11,6 +11,8 @@ API HTTP de alto nivel para integrar facturacion electronica DIAN en Colombia.
 - construccion de `AttachedDocument` para interoperabilidad por correo;
 - lookup de adquiriente;
 - lookup de rangos de numeracion autorizados;
+- descarga del XML de un documento por CUFE/CUDE;
+- emision de los eventos RADIAN del receptor (acuse, recibo del bien, aceptacion expresa y reclamo);
 - despliegue self-hosted con Docker.
 
 Es una alternativa abierta y self-hosted frente a integraciones DIAN cerradas o administradas por terceros.
@@ -22,6 +24,8 @@ Es una alternativa abierta y self-hosted frente a integraciones DIAN cerradas o 
 - `POST /api/v1/attached-documents`
 - `POST /api/v1/customers/lookup`
 - `POST /api/v1/numbering-ranges/lookup`
+- `POST /api/v1/documents/download-by-key`
+- `POST /api/v1/events`
 - `GET /health`
 
 ## Documentacion

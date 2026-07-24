@@ -28,6 +28,9 @@ REQUIRED_EXAMPLES = (
     REPO_ROOT / "docs" / "examples" / "customer-lookup.json",
     REPO_ROOT / "docs" / "examples" / "numbering-ranges-lookup.json",
     REPO_ROOT / "docs" / "examples" / "download-by-key.json",
+    REPO_ROOT / "docs" / "examples" / "evento-acuse-recibo.json",
+    REPO_ROOT / "docs" / "examples" / "evento-reclamo.json",
+    REPO_ROOT / "docs" / "examples" / "respuesta-evento.json",
     REPO_ROOT / "docs" / "examples" / "respuesta-download-by-key.json",
     REPO_ROOT / "docs" / "examples" / "respuesta-envio-aceptado.json",
     REPO_ROOT / "docs" / "examples" / "respuesta-lookup-cliente.json",
@@ -52,6 +55,7 @@ OFFICIAL_ENDPOINTS = (
     "POST /api/v1/customers/lookup",
     "POST /api/v1/numbering-ranges/lookup",
     "POST /api/v1/documents/download-by-key",
+    "POST /api/v1/events",
     "GET /health",
 )
 

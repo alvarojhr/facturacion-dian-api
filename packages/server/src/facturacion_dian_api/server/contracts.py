@@ -5,10 +5,13 @@ from __future__ import annotations
 from typing import Any, Literal, cast
 
 from facturacion_dian_api.core.models import (
+    ClaimCauseCode,
     CustomerDocumentType,
     DocumentStatus,
     DocumentType,
     Environment,
+    EventStatus,
+    EventType,
 )
 from facturacion_dian_api.server.examples import (
     ATTACHED_DOCUMENT_REQUEST_EXAMPLE,
@@ -20,11 +23,15 @@ from facturacion_dian_api.server.examples import (
     DOCUMENT_SUBMISSION_RESPONSE_EXAMPLE,
     DOWNLOAD_BY_KEY_REQUEST_EXAMPLE,
     DOWNLOAD_BY_KEY_RESPONSE_EXAMPLE,
+    EMIT_EVENT_ACKNOWLEDGEMENT_EXAMPLE,
+    EMIT_EVENT_CLAIM_EXAMPLE,
+    EMIT_EVENT_GOODS_RECEIPT_EXAMPLE,
+    EMIT_EVENT_RESPONSE_EXAMPLE,
     HEALTH_RESPONSE_EXAMPLE,
     NUMBERING_RANGE_LOOKUP_REQUEST_EXAMPLE,
     NUMBERING_RANGE_LOOKUP_RESPONSE_EXAMPLE,
 )
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class LineItemInput(BaseModel):
@@ -339,6 +346,139 @@ class DownloadByKeyResponse(BaseModel):
     status: str = ""
     error_message: str | None = None
     raw_response: dict[str, Any] = Field(default_factory=dict)
+
+
+class EventOptionsInput(BaseModel):
+    """Runtime-only credentials for a RADIAN event submission."""
+
+    software_id: str | None = None
+    software_pin: str | None = None
+
+
+class EventReceiverPersonInput(BaseModel):
+    """Person who took delivery of the invoice, goods or services.
+
+    Maps to ``cac:DocumentResponse/cac:IssuerParty/cac:Person``. DIAN makes
+    this group mandatory for the 032 event and validates it on 030/033, so
+    send it whenever the receiving person is known.
+    """
+
+    document_number: str
+    document_type: str = Field(default="13", description="Codigo DIAN @schemeName (13 = CC, 31 = NIT)")
+    first_name: str
+    family_name: str
+    job_title: str | None = None
+    organization_department: str | None = None
+
+
+class EmitEventRequest(BaseModel):
+    """Public request contract to register a RADIAN receiver event.
+
+    The identity of whoever emits the event (the invoice receiver) comes from
+    the deployment's ``COMPANY_*`` configuration, never from the body: one
+    deployment = one issuer (AGENTS.md § 3). Only the counterpart — the
+    supplier that issued the referenced invoice — travels in the request.
+    """
+
+    model_config = ConfigDict(
+        json_schema_extra=cast(
+            dict[str, Any],
+            {
+                "examples": [
+                    EMIT_EVENT_ACKNOWLEDGEMENT_EXAMPLE,
+                    EMIT_EVENT_GOODS_RECEIPT_EXAMPLE,
+                    EMIT_EVENT_CLAIM_EXAMPLE,
+                ]
+            },
+        )
+    )
+
+    event_type: EventType = Field(
+        description="030 acuse | 031 reclamo | 032 recibo del bien | 033 aceptacion expresa"
+    )
+    environment: Environment | None = None
+    event_number: str | None = Field(
+        default=None,
+        description=(
+            "Consecutivo propio del receptor para ApplicationResponse/cbc:ID. "
+            "Si se omite se deriva del CUFE referenciado, lo que mantiene "
+            "estable el CUDE entre reintentos."
+        ),
+    )
+    document_cufe: str = Field(description="CUFE de la factura del proveedor")
+    document_number: str
+    document_issue_date: str | None = Field(default=None, description="YYYY-MM-DD")
+    document_type_code: str = Field(default="01", description="Tipo del documento referenciado")
+    supplier_nit: str
+    supplier_name: str
+    supplier_dv: str | None = None
+    total_amount: int | None = None
+    claim_cause_code: ClaimCauseCode | None = Field(default=None, description="Solo evento 031")
+    claim_description: str | None = Field(default=None, description="Solo evento 031")
+    receiver_person: EventReceiverPersonInput | None = None
+    submission_options: EventOptionsInput | None = None
+    client_reference: str | None = None
+
+    @field_validator("environment", mode="before")
+    @classmethod
+    def _normalize_environment(cls, value: object) -> object:
+        """Accept the uppercase spellings some ERPs already send.
+
+        The canonical wire values are ``habilitacion``/``produccion`` like the
+        rest of the API; ``PRUEBA``/``PRODUCCION`` are aliases kept so callers
+        coded against the earlier draft keep working.
+        """
+        if isinstance(value, str):
+            aliases = {
+                "PRUEBA": "habilitacion",
+                "PRODUCCION": "produccion",
+                "HABILITACION": "habilitacion",
+            }
+            return aliases.get(value.strip().upper(), value)
+        return value
+
+    @model_validator(mode="after")
+    def _require_claim_fields(self) -> EmitEventRequest:
+        if self.event_type == "031" and not self.claim_cause_code:
+            raise ValueError("El evento 031 (reclamo) requiere claim_cause_code (01-04)")
+        if self.event_type != "031" and self.claim_cause_code:
+            raise ValueError("claim_cause_code solo aplica al evento 031 (reclamo)")
+        return self
+
+
+class EventArtifactPayload(BaseModel):
+    """XML artifacts returned after registering a RADIAN event.
+
+    ``application_response_*`` is the event signed by the receiver;
+    ``dian_response_*`` is the ApplicationResponse the DIAN signs back. The
+    Resolucion 165 requires retaining both, so persist them separately.
+    """
+
+    application_response_xml_base64: str | None = None
+    application_response_xml_filename: str | None = None
+    dian_response_xml_base64: str | None = None
+    dian_response_xml_filename: str | None = None
+
+
+class EmitEventResponse(BaseModel):
+    """Public response contract for a RADIAN event submission.
+
+    ``FAILED`` is never returned by this endpoint: a transport failure surfaces
+    as 502/504 and only the caller records it as such. A functional rejection
+    from DIAN is ``200`` with ``status="REJECTED"`` (AGENTS.md § 7).
+    """
+
+    model_config = ConfigDict(
+        json_schema_extra=cast(dict[str, Any], {"example": EMIT_EVENT_RESPONSE_EXAMPLE})
+    )
+
+    status: EventStatus
+    cude: str | None = None
+    tracking_id: str | None = None
+    client_reference: str | None = None
+    messages: list[str] = Field(default_factory=list)
+    dian_response: dict[str, Any] = Field(default_factory=dict)
+    artifacts: EventArtifactPayload | None = None
 
 
 class HealthResponse(BaseModel):

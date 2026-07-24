@@ -15,7 +15,12 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 from facturacion_dian_api.core.dian.envelope import build_send_test_set_async_envelope
-from facturacion_dian_api.core.models import DocumentLine, DocumentSubmitRequest
+from facturacion_dian_api.core.events import colombia_now
+from facturacion_dian_api.core.models import (
+    DocumentLine,
+    DocumentSubmitRequest,
+    EventSubmitRequest,
+)
 from facturacion_dian_api.core.signing.certificate import (
     CertificateBundle,
     load_certificate,
@@ -23,10 +28,14 @@ from facturacion_dian_api.core.signing.certificate import (
 )
 from facturacion_dian_api.core.signing.ws_security import sign_soap_envelope
 from facturacion_dian_api.core.signing.xades import sign_document, sign_document_xml
+from facturacion_dian_api.core.xml.application_response_builder import (
+    build_application_response_xml,
+)
 from facturacion_dian_api.core.xml.credit_note_builder import build_credit_note_xml
 from facturacion_dian_api.core.xml.debit_note_builder import build_debit_note_xml
 from facturacion_dian_api.core.xml.invoice_builder import build_invoice_xml
 from facturacion_dian_api.core.xml.namespaces import (
+    NS_APPLICATION_RESPONSE,
     NS_CREDIT_NOTE,
     NS_DEBIT_NOTE,
     NS_DS,
@@ -607,6 +616,95 @@ class TestXAdESSigningCreditNote:
             namespaces=NS,
         )
         assert len(sig) == 1
+
+
+class TestXAdESSigningApplicationResponse:
+    """Test signing RADIAN events.
+
+    An event carries exactly two UBLExtension nodes (DianExtensions + the
+    signature slot), so ``_relocate_signature`` must land the signature in the
+    second one just like it does for an invoice.
+    """
+
+    EVENT_CUDE = "c" * 96
+
+    @pytest.fixture
+    def event_request(self) -> EventSubmitRequest:
+        return EventSubmitRequest(
+            event_type="030",
+            environment="habilitacion",
+            software_id="software-123",
+            software_pin="12345",
+            document_cufe="b" * 96,
+            document_number="SETP990000123",
+            supplier_nit="800199436",
+            supplier_name="Proveedor Ejemplo S.A.S.",
+        )
+
+    def _build(self, req: EventSubmitRequest) -> etree._Element:
+        return build_application_response_xml(
+            req,
+            self.EVENT_CUDE,
+            "EV000001",
+            "2026-07-23",
+            "09:15:00-05:00",
+        )
+
+    def test_sign_application_response(
+        self,
+        event_request: EventSubmitRequest,
+        test_bundle: CertificateBundle,
+    ) -> None:
+        signed = sign_document(self._build(event_request), test_bundle)
+        assert signed.tag == f"{{{NS_APPLICATION_RESPONSE}}}ApplicationResponse"
+
+    def test_signature_lands_in_second_ubl_extension(
+        self,
+        event_request: EventSubmitRequest,
+        test_bundle: CertificateBundle,
+    ) -> None:
+        signed = sign_document(self._build(event_request), test_bundle)
+
+        sig = signed.xpath(
+            "ext:UBLExtensions/ext:UBLExtension[2]/ext:ExtensionContent/ds:Signature",
+            namespaces=NS,
+        )
+        assert len(sig) == 1
+        # No debe quedar una firma suelta en la raiz.
+        assert signed.find(f"{{{NS_DS}}}Signature") is None
+
+    def test_signing_time_matches_the_event_issue_date(
+        self,
+        event_request: EventSubmitRequest,
+        test_bundle: CertificateBundle,
+    ) -> None:
+        """Rule AAD09e: the event date must equal the signature date.
+
+        The service stamps ``IssueDate`` from ``colombia_now()`` and the signer
+        stamps ``SigningTime`` from the same clock, so both land on the same
+        Colombian calendar day. A UTC-based stamp would drift after 19:00.
+        """
+        issue_date = colombia_now().date().isoformat()
+        root = build_application_response_xml(
+            event_request,
+            self.EVENT_CUDE,
+            "EV000001",
+            issue_date,
+            "09:15:00-05:00",
+        )
+        signed = sign_document(root, test_bundle)
+
+        signing_time = signed.xpath("//xades:SigningTime/text()", namespaces=NS)[0]
+        assert signing_time.startswith(issue_date)
+
+    def test_signed_event_xml_is_well_formed(
+        self,
+        event_request: EventSubmitRequest,
+        test_bundle: CertificateBundle,
+    ) -> None:
+        xml_bytes = sign_document_xml(self._build(event_request), test_bundle)
+        parsed = etree.fromstring(xml_bytes)
+        assert parsed.tag == f"{{{NS_APPLICATION_RESPONSE}}}ApplicationResponse"
 
 
 class TestXAdESSigningDebitNote:

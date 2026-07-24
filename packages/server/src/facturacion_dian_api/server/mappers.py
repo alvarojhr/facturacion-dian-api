@@ -8,6 +8,9 @@ from facturacion_dian_api.core.models import (
     DocumentLine,
     DocumentSubmissionResult,
     DocumentSubmitRequest,
+    EventReceiverPerson,
+    EventSubmissionResult,
+    EventSubmitRequest,
 )
 from facturacion_dian_api.core.models import (
     NumberingRangePayload as CoreNumberingRangePayload,
@@ -19,6 +22,9 @@ from facturacion_dian_api.server.contracts import (
     BuyerLookupResponse,
     DocumentSubmissionRequest,
     DocumentSubmissionResponse,
+    EmitEventRequest,
+    EmitEventResponse,
+    EventArtifactPayload,
     NumberingRangeLookupResponse,
     NumberingRangePayload,
     SubmissionArtifactPayload,
@@ -117,6 +123,53 @@ def to_public_submission_response(result: DocumentSubmissionResult) -> DocumentS
         document_key=result.document_key,
         qr_url=result.qr_url,
         status=result.status,
+        messages=result.messages,
+        dian_response=result.dian_response,
+        artifacts=artifacts,
+    )
+
+
+def to_core_event_request(req: EmitEventRequest) -> EventSubmitRequest:
+    """Adapt the public event contract to the core shape."""
+
+    options = req.submission_options
+    person = req.receiver_person
+
+    return EventSubmitRequest(
+        event_type=req.event_type,
+        environment=req.environment,
+        software_id=options.software_id if options else None,
+        software_pin=options.software_pin if options else None,
+        event_number=req.event_number,
+        document_cufe=req.document_cufe,
+        document_number=req.document_number,
+        document_issue_date=req.document_issue_date,
+        document_type_code=req.document_type_code,
+        supplier_nit=req.supplier_nit,
+        supplier_name=req.supplier_name,
+        supplier_dv=req.supplier_dv,
+        total_amount=req.total_amount,
+        claim_cause_code=req.claim_cause_code,
+        claim_description=req.claim_description,
+        receiver_person=(
+            EventReceiverPerson.model_validate(person.model_dump()) if person is not None else None
+        ),
+        client_reference=req.client_reference,
+    )
+
+
+def to_public_event_response(result: EventSubmissionResult) -> EmitEventResponse:
+    """Convert a core event result into the public response model."""
+
+    artifacts = None
+    if result.artifacts is not None:
+        artifacts = EventArtifactPayload.model_validate(result.artifacts.model_dump())
+
+    return EmitEventResponse(
+        status=result.status,
+        cude=result.cude,
+        tracking_id=result.tracking_id,
+        client_reference=result.client_reference,
         messages=result.messages,
         dian_response=result.dian_response,
         artifacts=artifacts,

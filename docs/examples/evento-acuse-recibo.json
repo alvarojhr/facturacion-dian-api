@@ -1,0 +1,17 @@
+{
+  "event_type": "030",
+  "environment": "habilitacion",
+  "event_number": "EV000001",
+  "document_cufe": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "document_number": "SETP990000123",
+  "document_issue_date": "2026-07-10",
+  "document_type_code": "01",
+  "supplier_nit": "800199436",
+  "supplier_name": "Proveedor Ejemplo S.A.S.",
+  "total_amount": 119000,
+  "client_reference": "acuse-erp-1001",
+  "submission_options": {
+    "software_id": "software-demo-id",
+    "software_pin": "pin-demo-001"
+  }
+}

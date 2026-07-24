@@ -397,6 +397,108 @@ ERROR_504_EXAMPLE = {
     "detail": "Timeout calling DIAN SendTestSetAsync"
 }
 
+EVENT_CUDE_EXAMPLE = "demo-event-cude-not-real"
+APPLICATION_RESPONSE_XML_BASE64 = base64.b64encode(
+    b"<ApplicationResponse>demo</ApplicationResponse>"
+).decode("ascii")
+DIAN_EVENT_RESPONSE_XML_BASE64 = base64.b64encode(
+    b"<ApplicationResponse>dian</ApplicationResponse>"
+).decode("ascii")
+
+EMIT_EVENT_ACKNOWLEDGEMENT_EXAMPLE = {
+    "event_type": "030",
+    "environment": "habilitacion",
+    "event_number": "EV000001",
+    "document_cufe": "b" * 96,
+    "document_number": "SETP990000123",
+    "document_issue_date": "2026-07-10",
+    "supplier_nit": "800199436",
+    "supplier_name": "Proveedor Ejemplo S.A.S.",
+    "total_amount": 119000,
+    "submission_options": {
+        "software_id": "software-demo-id",
+        "software_pin": "pin-demo-001",
+    },
+}
+
+EMIT_EVENT_GOODS_RECEIPT_EXAMPLE = {
+    "event_type": "032",
+    "event_number": "EV000002",
+    "document_cufe": "b" * 96,
+    "document_number": "SETP990000123",
+    "document_issue_date": "2026-07-10",
+    "supplier_nit": "800199436",
+    "supplier_name": "Proveedor Ejemplo S.A.S.",
+    "receiver_person": {
+        "document_number": "1098765432",
+        "document_type": "13",
+        "first_name": "Ana",
+        "family_name": "Perez",
+        "job_title": "Jefe de bodega",
+        "organization_department": "Almacen",
+    },
+    "submission_options": {
+        "software_id": "software-demo-id",
+        "software_pin": "pin-demo-001",
+    },
+}
+
+EMIT_EVENT_CLAIM_EXAMPLE = {
+    "event_type": "031",
+    "event_number": "EV000003",
+    "document_cufe": "b" * 96,
+    "document_number": "SETP990000123",
+    "document_issue_date": "2026-07-10",
+    "supplier_nit": "800199436",
+    "supplier_name": "Proveedor Ejemplo S.A.S.",
+    "claim_cause_code": "03",
+    "claim_description": "Se recibieron 80 de las 100 unidades facturadas.",
+    "submission_options": {
+        "software_id": "software-demo-id",
+        "software_pin": "pin-demo-001",
+    },
+}
+
+EMIT_EVENT_OPENAPI_EXAMPLES = {
+    "acuse_de_recibo": {
+        "summary": "030 Acuse de recibo",
+        "description": "Primer evento de la secuencia; solo requiere los datos de la factura.",
+        "value": EMIT_EVENT_ACKNOWLEDGEMENT_EXAMPLE,
+    },
+    "recibo_del_bien": {
+        "summary": "032 Recibo del bien o servicio",
+        "description": "La DIAN exige receiver_person para este evento.",
+        "value": EMIT_EVENT_GOODS_RECEIPT_EXAMPLE,
+    },
+    "reclamo": {
+        "summary": "031 Reclamo",
+        "description": "Requiere causal 01-04 y descripcion.",
+        "value": EMIT_EVENT_CLAIM_EXAMPLE,
+    },
+}
+
+EMIT_EVENT_RESPONSE_EXAMPLE = {
+    "status": "ACCEPTED",
+    "cude": EVENT_CUDE_EXAMPLE,
+    "tracking_id": "f8809b485030d5f0548451f0f5562649936c45aba286819c052d8dfa432dcb7ed",
+    "messages": ["Procesado Correctamente."],
+    "client_reference": "acuse-erp-1001",
+    "dian_response": {
+        "is_valid": True,
+        "status_code": "00",
+        "status_description": "Procesado Correctamente.",
+        "status_message": "",
+        "tracking_id": "f8809b485030d5f0548451f0f5562649936c45aba286819c052d8dfa432dcb7ed",
+        "error_messages": [],
+    },
+    "artifacts": {
+        "application_response_xml_base64": APPLICATION_RESPONSE_XML_BASE64,
+        "application_response_xml_filename": "ar_030_SETP990000123.xml",
+        "dian_response_xml_base64": DIAN_EVENT_RESPONSE_XML_BASE64,
+        "dian_response_xml_filename": "dian_030_SETP990000123.xml",
+    },
+}
+
 DOWNLOAD_BY_KEY_REQUEST_EXAMPLE = {
     "environment": "produccion",
     "document_key": "a" * 96,

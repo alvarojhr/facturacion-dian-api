@@ -50,6 +50,9 @@ ACTION_GET_NUMBERING_RANGE = (
 ACTION_GET_XML_BY_DOCUMENT_KEY = (
     "http://wcf.dian.colombia/IWcfDianCustomerServices/GetXmlByDocumentKey"
 )
+ACTION_SEND_EVENT_UPDATE_STATUS = (
+    "http://wcf.dian.colombia/IWcfDianCustomerServices/SendEventUpdateStatus"
+)
 
 
 def _qn(ns: str, tag: str) -> str:
@@ -225,6 +228,35 @@ def build_get_xml_by_document_key_envelope(
     body = _sub(envelope, _qn(NS_SOAP, "Body"))
     get_xml = _sub(body, _qn(NS_WCF, "GetXmlByDocumentKey"))
     _sub(get_xml, _qn(NS_WCF, "trackId"), document_key)
+
+    return etree.tostring(envelope, xml_declaration=True, encoding="UTF-8")
+
+
+def build_send_event_update_status_envelope(
+    endpoint_url: str,
+    content_b64: str,
+) -> bytes:
+    """Build SOAP 1.2 envelope for SendEventUpdateStatus operation.
+
+    Registers a RADIAN event (ApplicationResponse) before DIAN. Unlike
+    ``SendBillSync``, the body carries **only** ``contentFile``: the operation
+    takes no ``fileName`` argument (Anexo Técnico v1.9, § 7.13.2).
+
+    Args:
+        endpoint_url: The DIAN WSDL endpoint URL.
+        content_b64: Base64-encoded ZIP holding exactly one ApplicationResponse.
+
+    Returns:
+        SOAP envelope as UTF-8 bytes.
+    """
+    envelope = etree.Element(_qn(NS_SOAP, "Envelope"), nsmap=NSMAP_SOAP)
+    header = _sub(envelope, _qn(NS_SOAP, "Header"))
+
+    _add_wsa_headers(header, ACTION_SEND_EVENT_UPDATE_STATUS, endpoint_url)
+
+    body = _sub(envelope, _qn(NS_SOAP, "Body"))
+    send_event = _sub(body, _qn(NS_WCF, "SendEventUpdateStatus"))
+    _sub(send_event, _qn(NS_WCF, "contentFile"), content_b64)
 
     return etree.tostring(envelope, xml_declaration=True, encoding="UTF-8")
 
