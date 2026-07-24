@@ -381,7 +381,7 @@ class TestInvoiceBuilderParties:
     def test_supplier_additional_account_id_persona_natural(
         self, invoice_request: DocumentSubmitRequest, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        # Construir/Kennedy son personas naturales → "2". Antes estaba
+        # Un emisor persona natural debe declarar "2". Antes estaba
         # hardcodeado "1" y DIAN mostraba "Persona Jurídica".
         monkeypatch.setattr(settings.company, "additional_account_id", "2")
         root = build_invoice_xml(invoice_request, FAKE_CUFE)

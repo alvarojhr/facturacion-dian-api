@@ -26,9 +26,9 @@ class CompanySettings(BaseSettings):
     nit: str = "900123456"
     dv: str = "7"
     # DIAN AdditionalAccountID del emisor: "1" = persona jurídica, "2" =
-    # persona natural. Default "1" para conservar el ejemplo genérico
-    # ("Example Issuer SAS"); los negocios reales (Construir/Kennedy son
-    # personas naturales) lo fijan a "2" vía COMPANY_ADDITIONAL_ACCOUNT_ID.
+    # persona natural. Default "1" por coherencia con el emisor de ejemplo
+    # ("Example Issuer SAS", una SAS); un emisor persona natural lo fija a
+    # "2" vía COMPANY_ADDITIONAL_ACCOUNT_ID.
     additional_account_id: Literal["1", "2"] = "1"
     address: str = "Street 10 #20-30"
     city_code: str = "11001"

@@ -349,9 +349,9 @@ def build_supplier_party(parent: etree._Element, prefix: str, req: DocumentSubmi
     country_code = resolved_issuer_country_code(req)
 
     supplier = _sub(parent, cac("AccountingSupplierParty"))
-    # "1" = persona jurídica, "2" = persona natural. Configurable porque
-    # ambos negocios reales (Construir/Kennedy) son personas naturales;
-    # antes estaba hardcodeado "1" y DIAN mostraba "Persona Jurídica".
+    # "1" = persona jurídica, "2" = persona natural. Configurable porque un
+    # emisor persona natural necesita "2"; antes estaba hardcodeado "1" y
+    # DIAN mostraba "Persona Jurídica" para todos los emisores.
     _sub(supplier, cbc("AdditionalAccountID"), resolved_issuer_additional_account_id(req))
 
     party = _sub(supplier, cac("Party"))
