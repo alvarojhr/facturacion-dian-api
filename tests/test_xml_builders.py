@@ -891,6 +891,38 @@ class TestPosDocBuilder:
         assert identifier.text == "222222222222"
         assert identifier.get("schemeName") == "13"
 
+    def test_explicit_sentinel_nit_is_treated_as_final_consumer(
+        self, invoice_request: DocumentSubmitRequest
+    ) -> None:
+        # Un llamador que ya diligencia el centinela de DIAN, pero declara el
+        # tipo documental como NIT, caia por la rama de adquiriente
+        # identificado: se emitia PhysicalLocation y un TaxLevelCode de
+        # responsable, cuando 222222222222 es justamente el consumidor final.
+        request = invoice_request.model_copy(
+            update={"customer_nit": "222222222222", "customer_document_type": "NIT"}
+        )
+        root = build_invoice_xml(request, FAKE_CUFE)
+
+        tax_level_code = _xpath_text(
+            root,
+            "cac:AccountingCustomerParty/cac:Party/cac:PartyTaxScheme/cbc:TaxLevelCode",
+        )
+        assert tax_level_code == "R-99-PN"
+        assert not _xpath(root, "cac:AccountingCustomerParty/cac:Party/cac:PhysicalLocation")
+
+    def test_blank_nit_is_treated_as_final_consumer(
+        self, pos_request: DocumentSubmitRequest
+    ) -> None:
+        request = pos_request.model_copy(update={"customer_nit": "   "})
+        root = build_invoice_xml(request, FAKE_CUFE)
+
+        identifier = _xpath(
+            root,
+            "cac:AccountingCustomerParty/cac:Party/cac:PartyIdentification/cbc:ID",
+        )[0]
+        # Un NIT en blanco no puede viajar como identificador del adquiriente.
+        assert identifier.text == "222222222222"
+
     def test_single_line(self, pos_request: DocumentSubmitRequest) -> None:
         root = build_invoice_xml(pos_request, FAKE_CUFE)
         lines = _xpath(root, "cac:InvoiceLine")
