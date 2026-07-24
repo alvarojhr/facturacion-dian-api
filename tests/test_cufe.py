@@ -1,7 +1,7 @@
 """Tests for CUFE, CUDE, and Software Security Code calculation.
 
 Verifies SHA-384 hashing logic against known test vectors.
-The exact concatenation format follows DIAN Anexo TÃ©cnico v1.9.
+The exact concatenation format follows DIAN Anexo Técnico v1.9.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from facturacion_dian_api.core.cufe.calculator import (
 
 
 class TestCufeCalculation:
-    """Test CUFE (CÃ³digo Ãšnico de Factura ElectrÃ³nica) generation."""
+    """Test CUFE (Código Único de Factura Electrónica) generation."""
 
     def test_cufe_returns_96_char_hex(self) -> None:
         """CUFE must be a 96-char lowercase hex string (SHA-384)."""
@@ -158,7 +158,7 @@ class TestCufeCalculation:
 
 
 class TestCudeCalculation:
-    """Test CUDE (CÃ³digo Ãšnico de Documento ElectrÃ³nico) generation."""
+    """Test CUDE (Código Único de Documento Electrónico) generation."""
 
     def test_cude_returns_96_char_hex(self) -> None:
         """CUDE must be a 96-char lowercase hex string (SHA-384)."""
