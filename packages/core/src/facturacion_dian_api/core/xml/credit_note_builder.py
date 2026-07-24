@@ -102,8 +102,8 @@ def build_credit_note_xml(
     )
     _sub(root, cbc("LineCountNumeric"), str(len(req.lines)))
 
-    # Tipo 22 (no reference): ResponseCode "1" (devoluciÃ³n parcial) â€” annulment forbidden
-    # Tipo 1 (with reference): ResponseCode "1" as well â€” safer and accurate for POS returns
+    # Tipo 22 (no reference): ResponseCode "1" (devolución parcial) — annulment forbidden
+    # Tipo 1 (with reference): ResponseCode "1" as well — safer and accurate for POS returns
     response_code = "1"
 
     if not has_reference:
@@ -119,7 +119,7 @@ def build_credit_note_xml(
     if has_reference:
         _sub(discrepancy, cbc("ReferenceID"), req.referenced_invoice_number)
     _sub(discrepancy, cbc("ResponseCode"), response_code)
-    _sub(discrepancy, cbc("Description"), req.credit_note_reason or "DevoluciÃ³n parcial")
+    _sub(discrepancy, cbc("Description"), req.credit_note_reason or "Devolución parcial")
 
     if has_reference:
         billing_ref = _sub(root, cac("BillingReference"))
