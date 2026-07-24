@@ -542,8 +542,11 @@ class TestEmitEvent:
         client: TestClient,
         sample_event_payload: dict,
     ) -> None:
-        # El ERP mapea dian_config.environment (PRUEBA/PRODUCCION) a la grafia
-        # canonica al construir el payload, igual que en el envio de documentos.
+        # El endpoint usa una sola grafia canonica (habilitacion/produccion),
+        # como el resto de la API; no hay normalizador. El ERP ya mapea
+        # dian_config.environment (PRUEBA/PRODUCCION) antes de llamar, igual que
+        # en el envio de documentos. Este test guarda el contrato contra la
+        # reintroduccion de un alias permisivo.
         sample_event_payload["environment"] = "PRUEBA"
         response = client.post("/api/v1/events", json=sample_event_payload)
         assert response.status_code == 422

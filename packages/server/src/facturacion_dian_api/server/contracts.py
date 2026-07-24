@@ -31,7 +31,7 @@ from facturacion_dian_api.server.examples import (
     NUMBERING_RANGE_LOOKUP_REQUEST_EXAMPLE,
     NUMBERING_RANGE_LOOKUP_RESPONSE_EXAMPLE,
 )
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class LineItemInput(BaseModel):
@@ -418,24 +418,6 @@ class EmitEventRequest(BaseModel):
     receiver_person: EventReceiverPersonInput | None = None
     submission_options: EventOptionsInput | None = None
     client_reference: str | None = None
-
-    @field_validator("environment", mode="before")
-    @classmethod
-    def _normalize_environment(cls, value: object) -> object:
-        """Accept the uppercase spellings some ERPs already send.
-
-        The canonical wire values are ``habilitacion``/``produccion`` like the
-        rest of the API; ``PRUEBA``/``PRODUCCION`` are aliases kept so callers
-        coded against the earlier draft keep working.
-        """
-        if isinstance(value, str):
-            aliases = {
-                "PRUEBA": "habilitacion",
-                "PRODUCCION": "produccion",
-                "HABILITACION": "habilitacion",
-            }
-            return aliases.get(value.strip().upper(), value)
-        return value
 
     @model_validator(mode="after")
     def _require_claim_fields(self) -> EmitEventRequest:
