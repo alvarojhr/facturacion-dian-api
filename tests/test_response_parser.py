@@ -2,10 +2,12 @@
 
 import base64
 
+import pytest
 from facturacion_dian_api.core.dian.response_parser import (
     DianResponse,
     parse_get_acquirer_response,
     parse_get_numbering_range_response,
+    parse_get_xml_by_document_key_response,
     parse_send_bill_response,
 )
 
@@ -109,4 +111,139 @@ def test_parse_send_bill_response_extracts_xml_bytes() -> None:
 
     assert response.is_valid is True
     assert response.xml_bytes == xml_payload
+
+
+def _download_envelope(inner: str) -> bytes:
+    return f"""<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">
+  <s:Body>
+    <GetXmlByDocumentKeyResponse xmlns="http://wcf.dian.colombia">
+      <GetXmlByDocumentKeyResult xmlns:a="http://schemas.datacontract.org/2004/07/DianResponse">
+        {inner}
+      </GetXmlByDocumentKeyResult>
+    </GetXmlByDocumentKeyResponse>
+  </s:Body>
+</s:Envelope>""".encode()
+
+
+def test_parse_get_xml_by_document_key_response_decodes_xml() -> None:
+    xml_payload = b"<Invoice><ID>FDK000001</ID></Invoice>"
+    encoded = base64.b64encode(xml_payload).decode("ascii")
+
+    response = parse_get_xml_by_document_key_response(
+        _download_envelope(f"<a:XmlBase64Bytes>{encoded}</a:XmlBase64Bytes>")
+    )
+
+    assert response.success is True
+    assert response.xml_bytes == xml_payload
+    assert response.status == "DOWNLOADED"
+    assert response.error_message == ""
+
+
+@pytest.mark.parametrize("field", ["XmlBase64Bytes", "XmlBytesBase64", "XmlBytes"])
+def test_parse_get_xml_by_document_key_accepts_known_payload_field_names(field: str) -> None:
+    # DIAN no expone un unico nombre estable para el contenedor del base64
+    # entre operaciones, asi que el parser tolera las variantes conocidas.
+    xml_payload = b"<Invoice>demo</Invoice>"
+    encoded = base64.b64encode(xml_payload).decode("ascii")
+
+    response = parse_get_xml_by_document_key_response(
+        _download_envelope(f"<a:{field}>{encoded}</a:{field}>")
+    )
+
+    assert response.success is True
+    assert response.xml_bytes == xml_payload
+
+
+def test_parse_get_xml_by_document_key_reports_status_from_dian() -> None:
+    xml_payload = b"<Invoice>demo</Invoice>"
+    encoded = base64.b64encode(xml_payload).decode("ascii")
+
+    response = parse_get_xml_by_document_key_response(
+        _download_envelope(
+            f"<a:XmlBase64Bytes>{encoded}</a:XmlBase64Bytes>"
+            "<a:StatusMessage>Documento encontrado</a:StatusMessage>"
+        )
+    )
+
+    assert response.success is True
+    assert response.status == "Documento encontrado"
+
+
+def test_parse_get_xml_by_document_key_missing_payload_is_not_found() -> None:
+    response = parse_get_xml_by_document_key_response(
+        _download_envelope("<a:StatusCode>404</a:StatusCode>")
+    )
+
+    assert response.success is False
+    assert response.xml_bytes is None
+    assert response.error_message
+
+
+def test_parse_get_xml_by_document_key_error_message_overrides_success() -> None:
+    xml_payload = b"<Invoice>demo</Invoice>"
+    encoded = base64.b64encode(xml_payload).decode("ascii")
+
+    response = parse_get_xml_by_document_key_response(
+        _download_envelope(
+            f"<a:XmlBase64Bytes>{encoded}</a:XmlBase64Bytes>"
+            "<a:ErrorMessage>Documento no autorizado</a:ErrorMessage>"
+        )
+    )
+
+    assert response.success is False
+    assert response.error_message == "Documento no autorizado"
+
+
+def test_parse_get_xml_by_document_key_corrupt_base64_is_not_success() -> None:
+    # base64.b64decode ignora los caracteres no-base64 en vez de fallar, asi
+    # que "###" decodifica a b"" sin lanzar. Eso no puede reportarse como
+    # descarga exitosa con cero bytes.
+    response = parse_get_xml_by_document_key_response(
+        _download_envelope("<a:XmlBase64Bytes>###</a:XmlBase64Bytes>")
+    )
+
+    assert response.success is False
+    assert response.xml_bytes is None
+    assert response.error_message == "Failed to decode base64 XML from DIAN response"
+
+
+def test_parse_get_xml_by_document_key_soap_fault() -> None:
+    fault_xml = b"""<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">
+  <s:Body>
+    <s:Fault>
+      <s:Code><s:Value>s:Sender</s:Value></s:Code>
+      <s:Reason><s:Text xml:lang="es">Token de seguridad invalido</s:Text></s:Reason>
+    </s:Fault>
+  </s:Body>
+</s:Envelope>"""
+
+    response = parse_get_xml_by_document_key_response(fault_xml)
+
+    assert response.success is False
+    assert response.error_message == "Token de seguridad invalido"
+
+
+def test_parse_get_xml_by_document_key_malformed_xml_does_not_raise() -> None:
+    response = parse_get_xml_by_document_key_response(b"<not-xml")
+
+    assert response.success is False
+    assert response.error_message == "Failed to parse DIAN response XML"
+
+
+def test_parse_get_xml_by_document_key_to_dict_omits_raw_bytes() -> None:
+    xml_payload = b"<Invoice>demo</Invoice>"
+    encoded = base64.b64encode(xml_payload).decode("ascii")
+
+    response = parse_get_xml_by_document_key_response(
+        _download_envelope(f"<a:XmlBase64Bytes>{encoded}</a:XmlBase64Bytes>")
+    )
+    payload = response.to_dict()
+
+    # raw_response viaja al cliente HTTP: debe ser serializable y no cargar
+    # el XML binario, que ya se expone aparte como xml_base64.
+    assert "xml_bytes" not in payload
+    assert payload["success"] is True
+    assert payload["status"] == "DOWNLOADED"
 

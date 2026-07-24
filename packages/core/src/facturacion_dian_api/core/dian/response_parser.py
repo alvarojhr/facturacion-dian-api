@@ -286,6 +286,80 @@ def parse_get_acquirer_response(response_xml: bytes) -> AcquirerResponse:
     return result
 
 
+@dataclass
+class DownloadXmlResponse:
+    """Parsed DIAN GetXmlByDocumentKey response."""
+
+    success: bool = False
+    xml_bytes: bytes | None = None
+    xml_filename: str | None = None
+    status: str = ""
+    error_message: str = ""
+    raw_xml: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "xml_filename": self.xml_filename,
+            "status": self.status,
+            "error_message": self.error_message,
+            "raw_xml": self.raw_xml,
+        }
+
+
+def parse_get_xml_by_document_key_response(response_xml: bytes) -> DownloadXmlResponse:
+    """Parse the SOAP response from DIAN GetXmlByDocumentKey."""
+    result = DownloadXmlResponse(raw_xml=response_xml.decode("utf-8", errors="replace"))
+
+    try:
+        root = etree.fromstring(response_xml)
+    except etree.XMLSyntaxError:
+        result.error_message = "Failed to parse DIAN response XML"
+        return result
+
+    fault = root.find(f".//{{{NS_SOAP}}}Fault")
+    if fault is not None:
+        fault_reason = fault.find(f"{{{NS_SOAP}}}Reason/{{{NS_SOAP}}}Text")
+        result.error_message = fault_reason.text if fault_reason is not None and fault_reason.text else "SOAP Fault"
+        return result
+
+    result_el = _find_first_element_by_local_name(root, "GetXmlByDocumentKeyResult")
+    if result_el is None:
+        result.error_message = "No GetXmlByDocumentKeyResult element in DIAN response"
+        return result
+
+    xml_b64 = _first_text_by_local_name(result_el, "XmlBytesBase64", "XmlBase64Bytes", "XmlBytes")
+    if xml_b64 is not None:
+        try:
+            decoded = base64.b64decode(xml_b64)
+        except Exception:
+            decoded = b""
+        # b64decode ignora caracteres no-base64 en vez de fallar, asi que una
+        # carga corrupta puede "decodificar" a vacio sin lanzar. Tratamos el
+        # resultado vacio como fallo en lugar de reportar exito con 0 bytes.
+        if decoded:
+            result.xml_bytes = decoded
+            result.success = True
+            result.status = "DOWNLOADED"
+        else:
+            result.error_message = "Failed to decode base64 XML from DIAN response"
+            result.xml_bytes = None
+    else:
+        result.error_message = "DIAN did not return XML for the given document key"
+        result.status = "NOT_FOUND"
+
+    status_text = _first_text_by_local_name(result_el, "StatusMessage", "StatusCode", "Status")
+    if status_text is not None:
+        result.status = status_text
+
+    error_text = _first_text_by_local_name(result_el, "ErrorMessage")
+    if error_text is not None:
+        result.error_message = error_text
+        result.success = False
+
+    return result
+
+
 def parse_get_numbering_range_response(response_xml: bytes) -> NumberingRangeResponse:
     """Parse the SOAP response from DIAN GetNumberingRange."""
     result = NumberingRangeResponse(raw_xml=response_xml.decode("utf-8", errors="replace"))

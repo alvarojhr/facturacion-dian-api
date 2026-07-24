@@ -396,3 +396,24 @@ ERROR_502_EXAMPLE = {
 ERROR_504_EXAMPLE = {
     "detail": "Timeout calling DIAN SendTestSetAsync"
 }
+
+DOWNLOAD_BY_KEY_REQUEST_EXAMPLE = {
+    "environment": "produccion",
+    "document_key": "a" * 96,
+}
+
+DOWNLOAD_BY_KEY_RESPONSE_EXAMPLE = {
+    "success": True,
+    "document_key": "a" * 96,
+    "xml_base64": "PEludm9pY2U+ZGVtbzwvSW52b2ljZT4=",
+    "xml_filename": "dian_aaaaaaaaaaaaaaaaaaaa.xml",
+    "status": "DOWNLOADED",
+    "error_message": None,
+    "raw_response": {
+        "success": True,
+        "xml_filename": None,
+        "status": "DOWNLOADED",
+        "error_message": "",
+        "raw_xml": "<s:Envelope>...</s:Envelope>",
+    },
+}

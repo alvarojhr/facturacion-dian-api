@@ -14,6 +14,8 @@ from facturacion_dian_api.server.contracts import (
     BuyerLookupResponse,
     DocumentSubmissionRequest,
     DocumentSubmissionResponse,
+    DownloadByKeyRequest,
+    DownloadByKeyResponse,
     HealthResponse,
     NumberingRangeLookupRequest,
     NumberingRangeLookupResponse,
@@ -42,12 +44,14 @@ REQUEST_MODELS = {
     "attached-document.json": AttachedDocumentRequest,
     "customer-lookup.json": BuyerLookupRequest,
     "numbering-ranges-lookup.json": NumberingRangeLookupRequest,
+    "download-by-key.json": DownloadByKeyRequest,
 }
 
 RESPONSE_MODELS = {
     "respuesta-envio-aceptado.json": DocumentSubmissionResponse,
     "respuesta-lookup-cliente.json": BuyerLookupResponse,
     "respuesta-rangos-numeracion.json": NumberingRangeLookupResponse,
+    "respuesta-download-by-key.json": DownloadByKeyResponse,
     "respuesta-health.json": HealthResponse,
 }
 

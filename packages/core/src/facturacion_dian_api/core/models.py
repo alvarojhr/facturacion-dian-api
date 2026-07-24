@@ -224,6 +224,18 @@ class NumberingRangeLookupResponse(BaseModel):
     ranges: list[NumberingRangePayload] = Field(default_factory=list)
 
 
+class DownloadByKeyResult(BaseModel):
+    """Result of downloading a document XML by its CUFE/CUDE."""
+
+    success: bool
+    document_key: str
+    xml_base64: str | None = None
+    xml_filename: str | None = None
+    status: str = ""
+    error_message: str | None = None
+    raw_response: dict[str, Any] = Field(default_factory=dict)
+
+
 class HealthStatus(BaseModel):
     """Health snapshot for the running service."""
 

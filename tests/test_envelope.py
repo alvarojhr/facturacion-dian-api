@@ -9,6 +9,7 @@ from facturacion_dian_api.core.dian.envelope import (
     ACTION_GET_NUMBERING_RANGE,
     ACTION_GET_STATUS,
     ACTION_GET_STATUS_ZIP,
+    ACTION_GET_XML_BY_DOCUMENT_KEY,
     ACTION_SEND_BILL_SYNC,
     ACTION_SEND_TEST_SET_ASYNC,
     NS_SOAP,
@@ -19,6 +20,7 @@ from facturacion_dian_api.core.dian.envelope import (
     build_get_numbering_range_envelope,
     build_get_status_envelope,
     build_get_status_zip_envelope,
+    build_get_xml_by_document_key_envelope,
     build_send_bill_sync_envelope,
     build_send_test_set_async_envelope,
     zip_and_encode,
@@ -366,4 +368,37 @@ class TestResponseParser:
         assert d["is_valid"] is True
         assert d["status_code"] == "00"
         assert isinstance(d["error_messages"], list)
+
+
+class TestGetXmlByDocumentKeyEnvelope:
+
+    def test_action(self) -> None:
+        env = build_get_xml_by_document_key_envelope(ENDPOINT, "cufe-123")
+        root = _parse(env)
+        action = root.xpath("s:Header/wsa:Action", namespaces=NS)
+        assert action[0].text == ACTION_GET_XML_BY_DOCUMENT_KEY
+
+    def test_document_key_travels_as_track_id(self) -> None:
+        # La operacion GetXmlByDocumentKey del WSDL recibe el CUFE/CUDE en el
+        # parametro trackId, igual que GetStatus.
+        env = build_get_xml_by_document_key_envelope(ENDPOINT, "cufe-123")
+        root = _parse(env)
+        track_id = root.xpath(
+            "s:Body/wcf:GetXmlByDocumentKey/wcf:trackId",
+            namespaces=NS,
+        )
+        assert track_id[0].text == "cufe-123"
+
+    def test_addressing_headers_target_the_endpoint(self) -> None:
+        env = build_get_xml_by_document_key_envelope(ENDPOINT, "cufe-123")
+        root = _parse(env)
+        to = root.xpath("s:Header/wsa:To", namespaces=NS)
+        reply_to = root.xpath("s:Header/wsa:ReplyTo/wsa:Address", namespaces=NS)
+        assert to[0].text == ENDPOINT
+        assert reply_to[0].text == WSA_ANONYMOUS
+
+    def test_envelope_is_well_formed_utf8_xml(self) -> None:
+        env = build_get_xml_by_document_key_envelope(ENDPOINT, "cufe-123")
+        assert env.startswith(b"<?xml")
+        assert _parse(env).tag == f"{{{NS_SOAP}}}Envelope"
 
