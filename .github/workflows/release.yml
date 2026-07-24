@@ -11,6 +11,12 @@ jobs:
     permissions:
       contents: read
       packages: write
+    # El contexto `secrets` no se puede leer en un `if:` de step; se expone vía
+    # `env` a nivel de job (donde sí está permitido) para poder gatear el
+    # dispatch cuando el PAT no está configurado. RELEASE_PAT es el mismo PAT que
+    # ci.yml usa para empujar el tag (scope en ambos repos).
+    env:
+      RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
 
     steps:
       - uses: actions/checkout@v5
@@ -37,3 +43,28 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      # Avisa al repo privado ferreterias-invoicing que ya hay imagen nueva en
+      # GHCR para este tag, para que despliegue los dian-* a Cloud Run. Va DESPUÉS
+      # del push, así el mirror del otro repo siempre encuentra la imagen.
+      #
+      # RELEASE_PAT: PAT fine-grained con "Contents: write" sobre AMBOS repos —
+      # facturacion-dian-api (ci.yml empuja el tag con él) y
+      # ferreterias-invoicing (aquí, lo exige POST /repos/{owner}/{repo}/dispatches).
+      # Si no está configurado, el paso se salta con un aviso en vez de fallar el
+      # release (la imagen ya quedó publicada); el deploy se lanza a mano.
+      - name: Trigger ferreterias-invoicing deploy
+        if: ${{ env.RELEASE_PAT != '' }}
+        env:
+          GH_TOKEN: ${{ env.RELEASE_PAT }}
+        run: |
+          jq -nc --arg tag "${{ github.ref_name }}" \
+            '{event_type: "dian-image-published", client_payload: {tag: $tag}}' \
+          | gh api repos/alvarojhr/ferreterias-invoicing/dispatches \
+              --method POST --input -
+          echo "Dispatch enviado a ferreterias-invoicing con tag ${{ github.ref_name }}"
+
+      - name: Warn if deploy token missing
+        if: ${{ env.RELEASE_PAT == '' }}
+        run: |
+          echo "::warning::RELEASE_PAT no está configurado; imagen publicada en GHCR pero NO se disparó el deploy del repo ferreterias-invoicing. Configura el PAT o dispara deploy-dian.yml a mano."

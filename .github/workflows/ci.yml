@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      docs_only: ${{ steps.changes.outputs.docs_only }}
 
     steps:
       - uses: actions/checkout@v5
@@ -105,3 +107,51 @@ jobs:
             -v "$PWD:/repo" \
             zricethezav/gitleaks:latest \
             detect --source=/repo --redact -v --exit-code=2 --log-opts=-1
+
+  # Autoversionado: al mergear a main con CI verde (y si cambió algo que altera
+  # la imagen, no solo docs), calcula el siguiente tag patch semver y lo empuja.
+  # El push del tag dispara release.yml → publica la imagen a GHCR → avisa al
+  # repo ferreterias-invoicing para que despliegue. Así un merge llega a
+  # producción sin cortar tags a mano.
+  #
+  # Solo hace bump de patch. Para un minor/major, corta el tag manualmente
+  # (git tag vX.Y.0 && git push --tags): release.yml lo maneja igual.
+  tag-release:
+    needs: validate
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.validate.outputs.docs_only != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      # IMPORTANTE: el tag se empuja con RELEASE_PAT (un PAT), NO con el
+      # GITHUB_TOKEN por defecto. GitHub suprime los eventos originados por el
+      # GITHUB_TOKEN para evitar recursión, así que un tag empujado con él NO
+      # dispararía release.yml. Con un PAT, el push del tag sí dispara el build +
+      # publicación en GHCR. El mismo PAT lo reusa release.yml para el dispatch
+      # cruzado a ferreterias-invoicing (ver docs/runbooks en ese repo).
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT }}
+
+      - name: Compute next patch tag
+        id: next
+        run: |
+          latest=$(git tag -l 'v*.*.*' --sort=-v:refname | head -n1)
+          latest=${latest:-v0.0.0}
+          ver=${latest#v}
+          major=${ver%%.*}
+          rest=${ver#*.}
+          minor=${rest%%.*}
+          patch=${rest#*.}
+          next="v${major}.${minor}.$((patch + 1))"
+          echo "tag=${next}" >> "$GITHUB_OUTPUT"
+          echo "Último tag: ${latest} → nuevo: ${next}"
+
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.next.outputs.tag }}" -m "release ${{ steps.next.outputs.tag }} (auto)"
+          git push origin "${{ steps.next.outputs.tag }}"
