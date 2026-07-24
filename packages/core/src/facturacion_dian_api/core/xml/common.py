@@ -134,6 +134,21 @@ def _normalize_customer_document_type(req: DocumentSubmitRequest) -> str:
     return "NIT" if req.customer_nit else "FINAL_CONSUMER"
 
 
+def _is_final_consumer_request(req: DocumentSubmitRequest, customer_document_type: str) -> bool:
+    """Decide si el adquiriente debe tratarse como consumidor final.
+
+    Ademas del tipo documental explicito, cuenta como consumidor final un NIT
+    vacio o en blanco, y el propio identificador centinela de DIAN cuando el
+    llamador ya lo envia diligenciado.
+    """
+    buyer_identifier = (req.customer_nit or "").strip()
+    return (
+        customer_document_type == "FINAL_CONSUMER"
+        or not buyer_identifier
+        or buyer_identifier == FINAL_CONSUMER_ID
+    )
+
+
 def _country_name(country_code: str) -> str:
     return "Colombia" if country_code.upper() == "CO" else country_code.upper()
 
@@ -349,9 +364,9 @@ def build_supplier_party(parent: etree._Element, prefix: str, req: DocumentSubmi
     country_code = resolved_issuer_country_code(req)
 
     supplier = _sub(parent, cac("AccountingSupplierParty"))
-    # "1" = persona jurídica, "2" = persona natural. Configurable porque
-    # ambos negocios reales (Construir/Kennedy) son personas naturales;
-    # antes estaba hardcodeado "1" y DIAN mostraba "Persona Jurídica".
+    # "1" = persona jurídica, "2" = persona natural. Configurable porque un
+    # emisor persona natural necesita "2"; antes estaba hardcodeado "1" y
+    # DIAN mostraba "Persona Jurídica" para todos los emisores.
     _sub(supplier, cbc("AdditionalAccountID"), resolved_issuer_additional_account_id(req))
 
     party = _sub(supplier, cac("Party"))
@@ -429,8 +444,8 @@ def build_customer_party(parent: etree._Element, req: DocumentSubmitRequest) -> 
     """Build cac:AccountingCustomerParty from request data."""
     customer = _sub(parent, cac("AccountingCustomerParty"))
     customer_document_type = _normalize_customer_document_type(req)
-    is_final_consumer = customer_document_type == "FINAL_CONSUMER" or not req.customer_nit
-    buyer_identifier = req.customer_nit or FINAL_CONSUMER_ID
+    is_final_consumer = _is_final_consumer_request(req, customer_document_type)
+    buyer_identifier = (req.customer_nit or "").strip() or FINAL_CONSUMER_ID
     buyer_identifier_type = CUSTOMER_DOCUMENT_SCHEME_NAMES[customer_document_type]
     buyer_verification_digit = _compute_nit_dv(req.customer_nit) if customer_document_type == "NIT" else None
 
@@ -715,7 +730,7 @@ def build_invoice_line(
             cbc("ID"),
             line.item_code,
             schemeID="999",
-            schemeName="EstÃ¡ndar de adopciÃ³n del contribuyente",
+            schemeName="Estándar de adopción del contribuyente",
         )
 
     price = _sub(inv_line, cac("Price"))

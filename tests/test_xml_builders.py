@@ -3,7 +3,7 @@
 Validates structure, namespace correctness, and content for:
 - Factura Electrónica (Invoice)
 - Documento Equivalente POS (Invoice variant)
-- Nota CrÃ©dito (CreditNote)
+- Nota Crédito (CreditNote)
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ from facturacion_dian_api.core.xml.namespaces import (
 )
 from lxml import etree
 
-# â”€â”€â”€ Namespace shortcuts for XPath â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─── Namespace shortcuts for XPath ─────────────────────────────
 
 NS = {
     "inv": NS_INVOICE,
@@ -48,7 +48,7 @@ NS = {
 }
 
 
-# â”€â”€â”€ Fixtures â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─── Fixtures ───────────────────────────────────────────────────
 
 @pytest.fixture
 def invoice_request() -> DocumentSubmitRequest:
@@ -140,7 +140,7 @@ def pos_request() -> DocumentSubmitRequest:
         resolution_valid_from="2019-01-19",
         resolution_valid_to="2030-01-19",
         pos_register_plate="Caja 1",
-        pos_register_location="Carrera 6 # 8 - 66, Floridablanca",
+        pos_register_location="Carrera 50 # 10 - 20, Floridablanca",
         cashier_name="Administrador",
         pos_register_type="POS",
         sale_code="POS-20260314-TEST",
@@ -191,7 +191,7 @@ def identified_pos_request() -> DocumentSubmitRequest:
         resolution_valid_from="2019-01-19",
         resolution_valid_to="2030-01-19",
         pos_register_plate="Caja 1",
-        pos_register_location="Carrera 6 # 8 - 66, Floridablanca",
+        pos_register_location="Carrera 50 # 10 - 20, Floridablanca",
         cashier_name="Administrador",
         pos_register_type="POS",
         sale_code="POS-20260314-TEST-2",
@@ -233,7 +233,7 @@ def credit_note_request() -> DocumentSubmitRequest:
         credit_note_number="NC000001",
         referenced_invoice_number="SETT000001",
         referenced_invoice_cufe="abc123def456",
-        credit_note_reason="DevoluciÃ³n parcial de mercancÃ­a",
+        credit_note_reason="Devolución parcial de mercancía",
     )
 
 
@@ -278,7 +278,7 @@ def debit_note_request() -> DocumentSubmitRequest:
 FAKE_CUFE = "a" * 96  # 96-char hex simulating SHA-384
 
 
-# â”€â”€â”€ Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─── Helper ─────────────────────────────────────────────────────
 
 def _xpath(root: etree._Element, expr: str) -> list:
     """Run XPath with standard namespace map."""
@@ -381,7 +381,7 @@ class TestInvoiceBuilderParties:
     def test_supplier_additional_account_id_persona_natural(
         self, invoice_request: DocumentSubmitRequest, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        # Construir/Kennedy son personas naturales → "2". Antes estaba
+        # Un emisor persona natural debe declarar "2". Antes estaba
         # hardcodeado "1" y DIAN mostraba "Persona Jurídica".
         monkeypatch.setattr(settings.company, "additional_account_id", "2")
         root = build_invoice_xml(invoice_request, FAKE_CUFE)
@@ -393,11 +393,11 @@ class TestInvoiceBuilderParties:
     ) -> None:
         body_request = invoice_request.model_copy(
             update={
-                "issuer_nit": "49656271",
-                "issuer_dv": "3",
-                "issuer_name": "RUEDA CARREÑO OLGA LUCIA",
+                "issuer_nit": "12345678",
+                "issuer_dv": "8",
+                "issuer_name": "PEREZ GOMEZ ANA LUCIA",
                 "issuer_additional_account_id": "2",
-                "issuer_address": "CR 6 # 8-66 BRR SANTA ANA",
+                "issuer_address": "CL 100 # 15-20 BRR EJEMPLO",
                 "issuer_city_code": "68276",
                 "issuer_city_name": "Floridablanca",
                 "issuer_department_code": "68",
@@ -405,8 +405,8 @@ class TestInvoiceBuilderParties:
                 "issuer_country_code": "CO",
                 "issuer_tax_level_code": "R-99-PN",
                 "issuer_economic_activity": "4752",
-                "issuer_phone": "3174283330",
-                "issuer_email": "olga@example.com",
+                "issuer_phone": "3001234567",
+                "issuer_email": "ana.perez@example.com",
             }
         )
 
@@ -419,7 +419,7 @@ class TestInvoiceBuilderParties:
             == "4752"
         )
         assert _xpath_text(root, f"{supplier}/cac:Party/cac:PartyName/cbc:Name") == (
-            "RUEDA CARREÑO OLGA LUCIA"
+            "PEREZ GOMEZ ANA LUCIA"
         )
         assert _xpath_text(root, f"{supplier}/cac:Party/cac:PhysicalLocation/cac:Address/cbc:ID") == (
             "68276"
@@ -427,7 +427,7 @@ class TestInvoiceBuilderParties:
         assert _xpath_text(
             root,
             f"{supplier}/cac:Party/cac:PhysicalLocation/cac:Address/cac:AddressLine/cbc:Line",
-        ) == "CR 6 # 8-66 BRR SANTA ANA"
+        ) == "CL 100 # 15-20 BRR EJEMPLO"
         assert _xpath_text(
             root,
             f"{supplier}/cac:Party/cac:PartyTaxScheme/cbc:TaxLevelCode",
@@ -435,12 +435,12 @@ class TestInvoiceBuilderParties:
         assert _xpath_text(
             root,
             f"{supplier}/cac:Party/cac:PartyTaxScheme/cbc:CompanyID",
-        ) == "49656271"
+        ) == "12345678"
         assert _xpath_text(root, f"{supplier}/cac:Party/cac:Contact/cbc:Telephone") == (
-            "3174283330"
+            "3001234567"
         )
         assert _xpath_text(root, f"{supplier}/cac:Party/cac:Contact/cbc:ElectronicMail") == (
-            "olga@example.com"
+            "ana.perez@example.com"
         )
 
     def test_supplier_complete_body_falls_back_per_missing_field(
@@ -493,7 +493,7 @@ class TestInvoiceBuilderParties:
     def test_customer_nit_persona_juridica(self, invoice_request: DocumentSubmitRequest) -> None:
         root = build_invoice_xml(invoice_request, FAKE_CUFE)
         account_id = _xpath_text(root, "cac:AccountingCustomerParty/cbc:AdditionalAccountID")
-        assert account_id == "1"  # 1 = Persona JurÃ­dica
+        assert account_id == "1"  # 1 = Persona Jurídica
 
     def test_customer_email_in_contact(self, invoice_request: DocumentSubmitRequest) -> None:
         root = build_invoice_xml(invoice_request, FAKE_CUFE)
@@ -891,6 +891,38 @@ class TestPosDocBuilder:
         assert identifier.text == "222222222222"
         assert identifier.get("schemeName") == "13"
 
+    def test_explicit_sentinel_nit_is_treated_as_final_consumer(
+        self, invoice_request: DocumentSubmitRequest
+    ) -> None:
+        # Un llamador que ya diligencia el centinela de DIAN, pero declara el
+        # tipo documental como NIT, caia por la rama de adquiriente
+        # identificado: se emitia PhysicalLocation y un TaxLevelCode de
+        # responsable, cuando 222222222222 es justamente el consumidor final.
+        request = invoice_request.model_copy(
+            update={"customer_nit": "222222222222", "customer_document_type": "NIT"}
+        )
+        root = build_invoice_xml(request, FAKE_CUFE)
+
+        tax_level_code = _xpath_text(
+            root,
+            "cac:AccountingCustomerParty/cac:Party/cac:PartyTaxScheme/cbc:TaxLevelCode",
+        )
+        assert tax_level_code == "R-99-PN"
+        assert not _xpath(root, "cac:AccountingCustomerParty/cac:Party/cac:PhysicalLocation")
+
+    def test_blank_nit_is_treated_as_final_consumer(
+        self, pos_request: DocumentSubmitRequest
+    ) -> None:
+        request = pos_request.model_copy(update={"customer_nit": "   "})
+        root = build_invoice_xml(request, FAKE_CUFE)
+
+        identifier = _xpath(
+            root,
+            "cac:AccountingCustomerParty/cac:Party/cac:PartyIdentification/cbc:ID",
+        )[0]
+        # Un NIT en blanco no puede viajar como identificador del adquiriente.
+        assert identifier.text == "222222222222"
+
     def test_single_line(self, pos_request: DocumentSubmitRequest) -> None:
         root = build_invoice_xml(pos_request, FAKE_CUFE)
         lines = _xpath(root, "cac:InvoiceLine")
@@ -927,7 +959,7 @@ class TestPosDocBuilder:
 
 
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-# Credit Note Builder (Nota CrÃ©dito)
+# Credit Note Builder (Nota Crédito)
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 
@@ -962,7 +994,7 @@ class TestCreditNoteBuilderStructure:
     def test_note_contains_reason(self, credit_note_request: DocumentSubmitRequest) -> None:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
         note = _xpath_text(root, "cbc:Note")
-        assert note == "DevoluciÃ³n parcial de mercancÃ­a"
+        assert note == "Devolución parcial de mercancía"
 
     def test_profile_id_matches_dian_catalog(
         self, credit_note_request: DocumentSubmitRequest
@@ -1014,14 +1046,14 @@ class TestCreditNoteDiscrepancy:
     ) -> None:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
         code = _xpath_text(root, "cac:DiscrepancyResponse/cbc:ResponseCode")
-        assert code == "1"  # DevoluciÃ³n parcial (anulaciÃ³n "2" is forbidden for tipo 22)
+        assert code == "1"  # Devolución parcial (anulación "2" is forbidden for tipo 22)
 
     def test_discrepancy_description(
         self, credit_note_request: DocumentSubmitRequest
     ) -> None:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
         desc = _xpath_text(root, "cac:DiscrepancyResponse/cbc:Description")
-        assert desc == "DevoluciÃ³n parcial de mercancÃ­a"
+        assert desc == "Devolución parcial de mercancía"
 
     def test_billing_reference_exists(
         self, credit_note_request: DocumentSubmitRequest
