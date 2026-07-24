@@ -156,7 +156,7 @@ def pos_request() -> DocumentSubmitRequest:
         resolution_number="18764000002",
         prefix="POS",
         pos_register_plate="Caja 1",
-        pos_register_location="Carrera 6 # 8 - 66, Floridablanca",
+        pos_register_location="Carrera 50 # 10 - 20, Floridablanca",
         cashier_name="Administrador",
         pos_register_type="POS",
         sale_code="POS-20260314-TEST",

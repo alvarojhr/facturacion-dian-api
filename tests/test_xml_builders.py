@@ -140,7 +140,7 @@ def pos_request() -> DocumentSubmitRequest:
         resolution_valid_from="2019-01-19",
         resolution_valid_to="2030-01-19",
         pos_register_plate="Caja 1",
-        pos_register_location="Carrera 6 # 8 - 66, Floridablanca",
+        pos_register_location="Carrera 50 # 10 - 20, Floridablanca",
         cashier_name="Administrador",
         pos_register_type="POS",
         sale_code="POS-20260314-TEST",
@@ -191,7 +191,7 @@ def identified_pos_request() -> DocumentSubmitRequest:
         resolution_valid_from="2019-01-19",
         resolution_valid_to="2030-01-19",
         pos_register_plate="Caja 1",
-        pos_register_location="Carrera 6 # 8 - 66, Floridablanca",
+        pos_register_location="Carrera 50 # 10 - 20, Floridablanca",
         cashier_name="Administrador",
         pos_register_type="POS",
         sale_code="POS-20260314-TEST-2",
@@ -393,11 +393,11 @@ class TestInvoiceBuilderParties:
     ) -> None:
         body_request = invoice_request.model_copy(
             update={
-                "issuer_nit": "49656271",
-                "issuer_dv": "3",
-                "issuer_name": "RUEDA CARREÑO OLGA LUCIA",
+                "issuer_nit": "12345678",
+                "issuer_dv": "8",
+                "issuer_name": "PEREZ GOMEZ ANA LUCIA",
                 "issuer_additional_account_id": "2",
-                "issuer_address": "CR 6 # 8-66 BRR SANTA ANA",
+                "issuer_address": "CL 100 # 15-20 BRR EJEMPLO",
                 "issuer_city_code": "68276",
                 "issuer_city_name": "Floridablanca",
                 "issuer_department_code": "68",
@@ -405,8 +405,8 @@ class TestInvoiceBuilderParties:
                 "issuer_country_code": "CO",
                 "issuer_tax_level_code": "R-99-PN",
                 "issuer_economic_activity": "4752",
-                "issuer_phone": "3174283330",
-                "issuer_email": "olga@example.com",
+                "issuer_phone": "3001234567",
+                "issuer_email": "ana.perez@example.com",
             }
         )
 
@@ -419,7 +419,7 @@ class TestInvoiceBuilderParties:
             == "4752"
         )
         assert _xpath_text(root, f"{supplier}/cac:Party/cac:PartyName/cbc:Name") == (
-            "RUEDA CARREÑO OLGA LUCIA"
+            "PEREZ GOMEZ ANA LUCIA"
         )
         assert _xpath_text(root, f"{supplier}/cac:Party/cac:PhysicalLocation/cac:Address/cbc:ID") == (
             "68276"
@@ -427,7 +427,7 @@ class TestInvoiceBuilderParties:
         assert _xpath_text(
             root,
             f"{supplier}/cac:Party/cac:PhysicalLocation/cac:Address/cac:AddressLine/cbc:Line",
-        ) == "CR 6 # 8-66 BRR SANTA ANA"
+        ) == "CL 100 # 15-20 BRR EJEMPLO"
         assert _xpath_text(
             root,
             f"{supplier}/cac:Party/cac:PartyTaxScheme/cbc:TaxLevelCode",
@@ -435,12 +435,12 @@ class TestInvoiceBuilderParties:
         assert _xpath_text(
             root,
             f"{supplier}/cac:Party/cac:PartyTaxScheme/cbc:CompanyID",
-        ) == "49656271"
+        ) == "12345678"
         assert _xpath_text(root, f"{supplier}/cac:Party/cac:Contact/cbc:Telephone") == (
-            "3174283330"
+            "3001234567"
         )
         assert _xpath_text(root, f"{supplier}/cac:Party/cac:Contact/cbc:ElectronicMail") == (
-            "olga@example.com"
+            "ana.perez@example.com"
         )
 
     def test_supplier_complete_body_falls_back_per_missing_field(

@@ -63,11 +63,11 @@ class TestDocumentSubmit:
         sample_invoice_payload: dict,
     ) -> None:
         issuer = {
-            "nit": "49656271",
-            "dv": "3",
-            "name": "RUEDA CARREÑO OLGA LUCIA",
+            "nit": "12345678",
+            "dv": "8",
+            "name": "PEREZ GOMEZ ANA LUCIA",
             "additional_account_id": "2",
-            "address": "CR 6 # 8-66 BRR SANTA ANA",
+            "address": "CL 100 # 15-20 BRR EJEMPLO",
             "city_code": "68276",
             "city_name": "Floridablanca",
             "department_code": "68",
@@ -75,8 +75,8 @@ class TestDocumentSubmit:
             "country_code": "CO",
             "tax_level_code": "R-99-PN",
             "economic_activity": "4752",
-            "phone": "3174283330",
-            "email": "olga@example.com",
+            "phone": "3001234567",
+            "email": "ana.perez@example.com",
         }
         sample_invoice_payload["issuer"] = issuer
 
