@@ -19,3 +19,7 @@ certificates/*.pfx
 certificates/*.pem
 certificates/*.crt
 certificates/*.key
+
+# Claude Code local state. The skills live in the tracked .agents/skills/ and are
+# exposed to Claude via a .claude/skills junction, so .claude/ itself is not versioned.
+.claude/
