@@ -3,7 +3,7 @@
 Validates structure, namespace correctness, and content for:
 - Factura Electrónica (Invoice)
 - Documento Equivalente POS (Invoice variant)
-- Nota CrÃ©dito (CreditNote)
+- Nota Crédito (CreditNote)
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ from facturacion_dian_api.core.xml.namespaces import (
 )
 from lxml import etree
 
-# â”€â”€â”€ Namespace shortcuts for XPath â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─── Namespace shortcuts for XPath ─────────────────────────────
 
 NS = {
     "inv": NS_INVOICE,
@@ -48,7 +48,7 @@ NS = {
 }
 
 
-# â”€â”€â”€ Fixtures â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─── Fixtures ───────────────────────────────────────────────────
 
 @pytest.fixture
 def invoice_request() -> DocumentSubmitRequest:
@@ -233,7 +233,7 @@ def credit_note_request() -> DocumentSubmitRequest:
         credit_note_number="NC000001",
         referenced_invoice_number="SETT000001",
         referenced_invoice_cufe="abc123def456",
-        credit_note_reason="DevoluciÃ³n parcial de mercancÃ­a",
+        credit_note_reason="Devolución parcial de mercancía",
     )
 
 
@@ -278,7 +278,7 @@ def debit_note_request() -> DocumentSubmitRequest:
 FAKE_CUFE = "a" * 96  # 96-char hex simulating SHA-384
 
 
-# â”€â”€â”€ Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─── Helper ─────────────────────────────────────────────────────
 
 def _xpath(root: etree._Element, expr: str) -> list:
     """Run XPath with standard namespace map."""
@@ -493,7 +493,7 @@ class TestInvoiceBuilderParties:
     def test_customer_nit_persona_juridica(self, invoice_request: DocumentSubmitRequest) -> None:
         root = build_invoice_xml(invoice_request, FAKE_CUFE)
         account_id = _xpath_text(root, "cac:AccountingCustomerParty/cbc:AdditionalAccountID")
-        assert account_id == "1"  # 1 = Persona JurÃ­dica
+        assert account_id == "1"  # 1 = Persona Jurídica
 
     def test_customer_email_in_contact(self, invoice_request: DocumentSubmitRequest) -> None:
         root = build_invoice_xml(invoice_request, FAKE_CUFE)
@@ -927,7 +927,7 @@ class TestPosDocBuilder:
 
 
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-# Credit Note Builder (Nota CrÃ©dito)
+# Credit Note Builder (Nota Crédito)
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 
@@ -962,7 +962,7 @@ class TestCreditNoteBuilderStructure:
     def test_note_contains_reason(self, credit_note_request: DocumentSubmitRequest) -> None:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
         note = _xpath_text(root, "cbc:Note")
-        assert note == "DevoluciÃ³n parcial de mercancÃ­a"
+        assert note == "Devolución parcial de mercancía"
 
     def test_profile_id_matches_dian_catalog(
         self, credit_note_request: DocumentSubmitRequest
@@ -1014,14 +1014,14 @@ class TestCreditNoteDiscrepancy:
     ) -> None:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
         code = _xpath_text(root, "cac:DiscrepancyResponse/cbc:ResponseCode")
-        assert code == "1"  # DevoluciÃ³n parcial (anulaciÃ³n "2" is forbidden for tipo 22)
+        assert code == "1"  # Devolución parcial (anulación "2" is forbidden for tipo 22)
 
     def test_discrepancy_description(
         self, credit_note_request: DocumentSubmitRequest
     ) -> None:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
         desc = _xpath_text(root, "cac:DiscrepancyResponse/cbc:Description")
-        assert desc == "DevoluciÃ³n parcial de mercancÃ­a"
+        assert desc == "Devolución parcial de mercancía"
 
     def test_billing_reference_exists(
         self, credit_note_request: DocumentSubmitRequest

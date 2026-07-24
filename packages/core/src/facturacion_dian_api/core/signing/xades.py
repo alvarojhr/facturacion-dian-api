@@ -24,7 +24,7 @@ DIAN_POLICY_URL = (
     "https://facturaelectronica.dian.gov.co/politicadefirma/v2/politicadefirmav2.pdf"
 )
 DIAN_POLICY_DESCRIPTION = (
-    "PolÃ­tica de firma para facturas electrÃ³nicas de la RepÃºblica de Colombia."
+    "Política de firma para facturas electrónicas de la República de Colombia."
 )
 DIAN_POLICY_DIGEST = "dMoMvtcG5aIzgYo0tIsSQeVJBDnUnfSOfBpxXrmor0Y="
 DIAN_SIGNER_ROLE = "supplier"

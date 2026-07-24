@@ -715,7 +715,7 @@ def build_invoice_line(
             cbc("ID"),
             line.item_code,
             schemeID="999",
-            schemeName="EstÃ¡ndar de adopciÃ³n del contribuyente",
+            schemeName="Estándar de adopción del contribuyente",
         )
 
     price = _sub(inv_line, cac("Price"))
