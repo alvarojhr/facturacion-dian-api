@@ -936,6 +936,58 @@ class TestPosDocBuilder:
         # Un NIT en blanco no puede viajar como identificador del adquiriente.
         assert identifier.text == "222222222222"
 
+    def test_consumidor_final_registration_name_is_the_dian_literal(
+        self, pos_request: DocumentSubmitRequest
+    ) -> None:
+        # FEV v1.9 FAK20 / DEE v1.0 DEAK20: el nombre fiscal del consumidor final
+        # debe ser el literal, no el nombre que traiga el llamador.
+        root = build_invoice_xml(pos_request, FAKE_CUFE)
+        registration_name = _xpath_text(
+            root,
+            "cac:AccountingCustomerParty/cac:Party/cac:PartyTaxScheme/cbc:RegistrationName",
+        )
+        assert registration_name == "consumidor final"
+
+    def test_named_buyer_without_document_does_not_leak_name_into_tax_scheme(
+        self, pos_request: DocumentSubmitRequest
+    ) -> None:
+        # Un ERP con el cliente a medias (nombre si, documento no) caia en la rama
+        # de consumidor final y emitia un DE contradictorio: el identificador decia
+        # "adquiriente no identificado" y el nombre fiscal decia "Juan Perez".
+        request = pos_request.model_copy(
+            update={
+                "customer_nit": None,
+                "customer_document_type": "CC",
+                "customer_name": "Juan Perez",
+            }
+        )
+        root = build_invoice_xml(request, FAKE_CUFE)
+
+        assert (
+            _xpath_text(
+                root,
+                "cac:AccountingCustomerParty/cac:Party/cac:PartyTaxScheme/cbc:RegistrationName",
+            )
+            == "consumidor final"
+        )
+        # El nombre del llamador no se pierde: el anexo lo admite en PartyName/Name.
+        assert (
+            _xpath_text(root, "cac:AccountingCustomerParty/cac:Party/cac:PartyName/cbc:Name")
+            == "Juan Perez"
+        )
+
+    def test_identified_buyer_keeps_its_own_registration_name(
+        self, invoice_request: DocumentSubmitRequest
+    ) -> None:
+        # El literal es exclusivo de la rama de consumidor final: un adquiriente
+        # identificado conserva su razon social registrada en el RUT.
+        root = build_invoice_xml(invoice_request, FAKE_CUFE)
+        registration_name = _xpath_text(
+            root,
+            "cac:AccountingCustomerParty/cac:Party/cac:PartyTaxScheme/cbc:RegistrationName",
+        )
+        assert registration_name == invoice_request.customer_name
+
     def test_single_line(self, pos_request: DocumentSubmitRequest) -> None:
         root = build_invoice_xml(pos_request, FAKE_CUFE)
         lines = _xpath(root, "cac:InvoiceLine")
