@@ -41,6 +41,11 @@ from lxml import etree
 
 FINAL_CONSUMER_ID = "222222222222"
 FINAL_CONSUMER_TAX_LEVEL_CODE = "R-99-PN"
+# El Anexo Tecnico exige este literal en PartyTaxScheme/RegistrationName cuando el
+# adquiriente es consumidor final (FEV v1.9 FAK20, DEE v1.0 DEAK20). El nombre que
+# envia el llamador se conserva en PartyName/Name, que es el campo que el propio
+# anexo reserva para el nombre comercial.
+FINAL_CONSUMER_REGISTRATION_NAME = "consumidor final"
 VALID_TAX_LEVEL_CODES = {"O-13", "O-15", "O-23", "O-47", FINAL_CONSUMER_TAX_LEVEL_CODE}
 CUSTOMER_DOCUMENT_SCHEME_NAMES = {
     "FINAL_CONSUMER": "13",
@@ -465,7 +470,7 @@ def build_customer_party(parent: etree._Element, req: DocumentSubmitRequest) -> 
 
     if is_final_consumer:
         tax_scheme_elem = _sub(party, cac("PartyTaxScheme"))
-        _sub(tax_scheme_elem, cbc("RegistrationName"), req.customer_name)
+        _sub(tax_scheme_elem, cbc("RegistrationName"), FINAL_CONSUMER_REGISTRATION_NAME)
         _sub(
             tax_scheme_elem,
             cbc("CompanyID"),
