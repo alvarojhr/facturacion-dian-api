@@ -16,6 +16,7 @@ from facturacion_dian_api.server.contracts import (
 from facturacion_dian_api.server.examples import (
     ATTACHED_DOCUMENT_REQUEST_EXAMPLE,
     ATTACHED_DOCUMENT_RESPONSE_EXAMPLE,
+    DOCUMENT_STATUS_ACCEPTED_RESPONSE_EXAMPLE,
     DOCUMENT_STATUS_RESPONSE_EXAMPLE,
     DOCUMENT_SUBMISSION_OPENAPI_EXAMPLES,
     DOCUMENT_SUBMISSION_RESPONSE_EXAMPLE,
@@ -72,8 +73,24 @@ async def submit_document(
     summary="Consultar estado por tracking_id",
     responses={
         200: {
-            "description": "Estado funcional devuelto por DIAN.",
-            "content": {"application/json": {"example": DOCUMENT_STATUS_RESPONSE_EXAMPLE}},
+            "description": (
+                "Estado funcional devuelto por DIAN. Si el documento ya fue procesado, "
+                "`document_key` trae el CUFE/CUDE que DIAN reporta y `qr_url` la URL del catalogo."
+            ),
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "procesado": {
+                            "summary": "Documento ya procesado por DIAN",
+                            "value": DOCUMENT_STATUS_ACCEPTED_RESPONSE_EXAMPLE,
+                        },
+                        "no_encontrado": {
+                            "summary": "Tracking id desconocido para DIAN",
+                            "value": DOCUMENT_STATUS_RESPONSE_EXAMPLE,
+                        },
+                    }
+                }
+            },
         },
         502: {"description": "Falla upstream o de transporte con DIAN.", "content": {"application/json": {"example": ERROR_502_EXAMPLE}}},
         504: {"description": "Timeout llamando a DIAN.", "content": {"application/json": {"example": ERROR_504_EXAMPLE}}},

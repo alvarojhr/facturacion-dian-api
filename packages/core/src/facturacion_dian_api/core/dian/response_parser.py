@@ -85,6 +85,11 @@ class DianResponse:
     error_messages: list[str] = field(default_factory=list)
     xml_bytes: bytes | None = None
     tracking_id: str | None = None
+    # CUFE/CUDE that DIAN reports for the document it processed
+    # (``XmlDocumentKey``). Distinct from ``tracking_id``, which may be a ZipKey:
+    # the tracking id identifies the *submission*, this identifies the *document*.
+    # Only a lookup on an already-processed document carries it.
+    document_key: str | None = None
     raw_xml: str = ""
 
     @property
@@ -111,6 +116,7 @@ class DianResponse:
             "status_message": self.status_message,
             "error_messages": self.error_messages,
             "tracking_id": self.tracking_id,
+            "document_key": self.document_key,
             "raw_xml": self.raw_xml,
         }
 
@@ -226,6 +232,15 @@ def parse_send_bill_response(response_xml: bytes) -> DianResponse:
     )
     if tracking_id is not None:
         result.tracking_id = tracking_id
+
+    # ``XmlDocumentKey`` is the CUFE/CUDE of the processed document. It is read
+    # separately from the tracking id on purpose: the chain above falls back to it
+    # when there is no ZipKey, which conflates two different identifiers. A caller
+    # that reconciles a document it did not get an ack for needs the key itself,
+    # and cannot tell from ``tracking_id`` alone which of the two it received.
+    document_key = _first_text_by_local_name(result_el, "XmlDocumentKey")
+    if document_key is not None:
+        result.document_key = document_key
 
     xml_b64 = _first_text_by_local_name(result_el, "XmlBase64Bytes", "XmlBytes")
     if xml_b64 is not None:

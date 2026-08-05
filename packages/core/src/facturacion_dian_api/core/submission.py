@@ -249,9 +249,19 @@ class DocumentSubmissionService:
                 application_response_xml_filename=f"ar_{tracking_id}.xml",
             )
 
+        # La clave del documento (CUFE/CUDE) la reporta la propia DIAN en
+        # ``XmlDocumentKey``. Se expone igual que en ``submit_document`` para que
+        # una consulta de estado sea autosuficiente: quien reconcilia un documento
+        # cuyo ack se perdió sólo tiene el tracking id, y sin esto no podría
+        # persistir la clave ni construir el QR sin recalcular el CUFE — un cálculo
+        # que daría un valor DISTINTO si el reintento se firmó con otra marca de
+        # tiempo (la fecha/hora entra en la semilla, § 5 y § 6).
+        document_key = dian_response.document_key
         return DocumentSubmissionResult(
             submission_id=tracking_id,
             tracking_id=tracking_id,
+            document_key=document_key,
+            qr_url=build_qr_url(document_key) if document_key else None,
             status="accepted" if dian_response.is_accepted else "rejected",
             messages=_collect_messages(dian_response),
             dian_response=dian_response.to_dict(),
