@@ -247,3 +247,67 @@ def test_parse_get_xml_by_document_key_to_dict_omits_raw_bytes() -> None:
     assert payload["success"] is True
     assert payload["status"] == "DOWNLOADED"
 
+
+
+def _get_status_envelope(inner: str) -> bytes:
+    return f"""<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">
+  <s:Body>
+    <GetStatusResponse xmlns="http://wcf.dian.colombia">
+      <GetStatusResult xmlns:b="http://schemas.datacontract.org/2004/07/DianResponse">
+        {inner}
+      </GetStatusResult>
+    </GetStatusResponse>
+  </s:Body>
+</s:Envelope>""".encode()
+
+
+def test_get_status_exposes_document_key_reported_by_dian() -> None:
+    """
+    ``XmlDocumentKey`` es el CUFE/CUDE del documento que DIAN proceso. Se expone
+    aparte del tracking id: quien reconcilia un envio cuyo acuse se perdio necesita
+    la clave, y recalcularla daria otro valor si el reintento se firmo con otra hora.
+    """
+    document_key = "a" * 96
+
+    response = parse_send_bill_response(
+        _get_status_envelope(
+            f"""<b:IsValid>true</b:IsValid>
+        <b:StatusCode>00</b:StatusCode>
+        <b:StatusDescription>Procesado Correctamente.</b:StatusDescription>
+        <b:XmlDocumentKey>{document_key}</b:XmlDocumentKey>"""
+        )
+    )
+
+    assert response.document_key == document_key
+    assert response.to_dict()["document_key"] == document_key
+
+
+def test_zip_key_is_a_tracking_id_and_not_a_document_key() -> None:
+    """Un ZipKey identifica el envio, no el documento: no debe filtrarse como clave."""
+    response = parse_send_bill_response(
+        _get_status_envelope(
+            """<b:IsValid>true</b:IsValid>
+        <b:StatusCode>00</b:StatusCode>
+        <b:ZipKey>zip-key-123</b:ZipKey>"""
+        )
+    )
+
+    assert response.tracking_id == "zip-key-123"
+    assert response.document_key is None
+
+
+def test_document_key_absent_leaves_tracking_id_fallback_intact() -> None:
+    """Sin ZipKey el tracking id sigue cayendo a XmlDocumentKey (contrato existente)."""
+    document_key = "b" * 96
+
+    response = parse_send_bill_response(
+        _get_status_envelope(
+            f"""<b:IsValid>true</b:IsValid>
+        <b:StatusCode>00</b:StatusCode>
+        <b:XmlDocumentKey>{document_key}</b:XmlDocumentKey>"""
+        )
+    )
+
+    assert response.tracking_id == document_key
+    assert response.document_key == document_key

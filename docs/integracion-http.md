@@ -70,6 +70,13 @@ curl --request POST "http://localhost:8000/api/v1/documents/submissions" `
 curl "http://localhost:8000/api/v1/documents/submissions/2c6c3df3-6301-4170-9e1e-a2441a8b5d5e"
 ```
 
+La respuesta usa el mismo modelo del envio. Cuando DIAN ya proceso el documento,
+`document_key` trae el CUFE/CUDE que ella misma reporta y `qr_url` la URL del
+catalogo para ese documento. Asi una consulta de estado basta para reconciliar un
+envio cuyo acuse se perdio: no hay que recalcular la clave, y recalcularla daria
+un valor distinto si el reintento se firmo con otra marca de tiempo (la fecha y
+hora de emision entran en la semilla del CUFE).
+
 ## AttachedDocument
 
 Payload canonico:
