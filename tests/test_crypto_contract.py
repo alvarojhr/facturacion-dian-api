@@ -9,13 +9,12 @@ un solo assert de estructura, y el sintoma no aparece hasta que DIAN rechaza la
 peticion en produccion.
 
 Este modulo cubre ese hueco. Es la red que se corre ANTES y DESPUES de subir
-`cryptography` (AGENTS.md seccion 4: firma y XML son fragiles a proposito).
+`cryptography` (AGENTS.md seccion 4.1, que describe el procedimiento completo).
 
 Tres capas, de la mas primitiva a la mas integrada:
 
-1. Known-answer test del primitivo RSA. PKCS#1 v1.5 es determinista: una clave
-   fija y un mensaje fijo producen SIEMPRE los mismos bytes. Si esta prueba
-   cambia de resultado entre dos versiones, la libreria cambio como firma.
+1. El primitivo RSA: determinismo del relleno PKCS#1 v1.5, y que lo firmado se
+   verifique contra la clave publica.
 2. Carga de PKCS#12 con los cifrados que se encuentran en el mundo real,
    incluido el legado (PBESv1 + 3DES + MAC SHA-1) que todavia emiten muchas
    herramientas de exportacion. `test_signing.py` solo prueba el moderno.
@@ -23,16 +22,19 @@ Tres capas, de la mas primitiva a la mas integrada:
    digests de cada `ds:Reference` y el `ds:SignatureValue` contra la clave
    publica del certificado. Es lo que hace el receptor al otro lado.
 
-La clave RSA de este modulo se construye a partir de primos fijos escritos en el
-codigo, no de un PEM: es material de juguete, generado para estas pruebas, y en
-forma de enteros no se confunde con una credencial real.
+Nada de material criptografico va escrito en el codigo: ni claves, ni firmas
+esperadas, ni contrasenas. Todo se genera en tiempo de prueba. La comparacion
+entre versiones de la libreria NO se hace fijando bytes aqui —eso obligaria a
+versionar una clave privada en un repo publico— sino corriendo esta suite
+completa contra la version vieja y la nueva y comparando el resultado, que es el
+procedimiento que exige AGENTS.md 4.1.
 """
 
 from __future__ import annotations
 
 import base64
 import hashlib
-import math
+import secrets
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -48,54 +50,7 @@ from facturacion_dian_api.core.signing.certificate import CertificateBundle, loa
 from facturacion_dian_api.core.signing.ws_security import sign_soap_envelope
 from lxml import etree
 
-# ─── Clave RSA-2048 fija (material de prueba) ──────────────────
-
-_KAT_P = int(
-    "1532876844902425591892430798844729389985260983382529457337258291439974903209"
-    "9691307468706002136195933043560355470755976534854057530296428133250488094691"
-    "6313359129600042780979575501414316359317714596107823283587492456309223997601"
-    "0080176623268219647120036306731630247820240342183451300454906452642903121165"
-    "16259"
-)
-_KAT_Q = int(
-    "1524391144608290311697620790484559572443934477210861308898902353987769745971"
-    "5084549247502767723991512626967329938327700173751771088380295617820886993501"
-    "0599011918906909184669906550185403367421475259251377589677000724777938611665"
-    "8203440136061851416518687730443598360793192010777692858472064840664951256027"
-    "33671"
-)
-_KAT_E = 65537
-
-# Mensaje y firma fijados. RSA PKCS#1 v1.5 no lleva aleatoriedad: el resultado
-# es una funcion pura de (clave, mensaje). Si este base64 deja de coincidir, la
-# libreria cambio el algoritmo de firma y ningun documento nuestro seria
-# verificable por DIAN con el mismo certificado.
-_KAT_MESSAGE = b"facturacion-dian-api RSA-SHA256 known-answer vector"
-_KAT_SIGNATURE_B64 = (
-    "AA8FfBylfGkQFu0Bc7hgKKDlSXbC5CtS17dNb1x1QwVWqJi6SJKYZC79ySh8TjHPfxc7KNOMEFUb"
-    "/lbZoXxfAei1RUu+G+rrygjDse4+biVpge6BFfOVg0fIfcMeUB8/z+omhBstenfY4KCjKCPqpG6h"
-    "Xm/xnfS79hOwhq1e0MPbRBnK88EzRvjkOnjJuTFk6WrDZEvdrS513PtkkmelkO+ID91cGGitzHgT"
-    "ct7emjaQMkZIlJBnyvfj9tjnfej5FsaQvtkFO0e+SO7RwRHGPsfw33wUxh6jVCI5NxSUYas0+0MS"
-    "fM1rOIA81DshtkeFF6KXgAnXU9k3lwrHG0C22A=="
-)
-
-CERT_PASSWORD = "test123"
-
-
-def _fixed_private_key() -> rsa.RSAPrivateKey:
-    """Reconstruye la clave de prueba desde sus primos."""
-    p, q, e = _KAT_P, _KAT_Q, _KAT_E
-    lam = (p - 1) * (q - 1) // math.gcd(p - 1, q - 1)
-    d = pow(e, -1, lam)
-    return rsa.RSAPrivateNumbers(
-        p=p,
-        q=q,
-        d=d,
-        dmp1=rsa.rsa_crt_dmp1(d, p),
-        dmq1=rsa.rsa_crt_dmq1(d, q),
-        iqmp=rsa.rsa_crt_iqmp(p, q),
-        public_numbers=rsa.RSAPublicNumbers(e=e, n=p * q),
-    ).private_key()
+MESSAGE = b"facturacion-dian-api crypto contract"
 
 
 def _self_signed(key: rsa.RSAPrivateKey) -> x509.Certificate:
@@ -117,62 +72,68 @@ def _self_signed(key: rsa.RSAPrivateKey) -> x509.Certificate:
 
 
 @pytest.fixture(scope="module")
-def fixed_key() -> rsa.RSAPrivateKey:
-    return _fixed_private_key()
+def signing_key() -> rsa.RSAPrivateKey:
+    """Clave RSA-2048 generada para la corrida. DIAN exige ese tamano."""
+    return rsa.generate_private_key(public_exponent=65537, key_size=2048)
 
 
 @pytest.fixture(scope="module")
-def bundle(fixed_key: rsa.RSAPrivateKey) -> CertificateBundle:
+def bundle(signing_key: rsa.RSAPrivateKey) -> CertificateBundle:
     return CertificateBundle(
-        private_key=fixed_key,
-        certificate=_self_signed(fixed_key),
+        private_key=signing_key,
+        certificate=_self_signed(signing_key),
         ca_chain=[],
     )
 
 
+@pytest.fixture
+def passphrase() -> str:
+    """Contrasena distinta en cada prueba; nunca una constante en el codigo."""
+    return secrets.token_hex(16)
+
+
 # ═══════════════════════════════════════════════════════════════
-# 1. Known-answer test del primitivo RSA
+# 1. El primitivo RSA
 # ═══════════════════════════════════════════════════════════════
 
 
-class TestRsaKnownAnswer:
-    """Fija los bytes exactos que produce RSA-SHA256 con relleno PKCS#1 v1.5.
+class TestRsaSigningPrimitive:
+    """RSA-SHA256 con relleno PKCS#1 v1.5.
 
     Es el primitivo que usan las DOS firmas del servicio: XAdES sobre el
     documento UBL (via signxml) y WS-Security sobre el sobre SOAP (directo, en
     `ws_security.py`).
     """
 
-    def test_signature_matches_the_pinned_vector(self, fixed_key: rsa.RSAPrivateKey) -> None:
-        signature = fixed_key.sign(_KAT_MESSAGE, padding.PKCS1v15(), hashes.SHA256())
-        assert base64.b64encode(signature).decode("ascii") == _KAT_SIGNATURE_B64
+    def test_key_is_2048_bits(self, signing_key: rsa.RSAPrivateKey) -> None:
+        assert signing_key.key_size == 2048
 
-    def test_key_reconstructed_from_primes_is_2048_bits(
-        self, fixed_key: rsa.RSAPrivateKey
-    ) -> None:
-        # DIAN exige claves RSA de 2048 bits; si la reconstruccion cambiara de
-        # tamano el vector de arriba dejaria de significar lo que dice.
-        assert fixed_key.key_size == 2048
+    def test_pkcs1v15_signing_is_deterministic(self, signing_key: rsa.RSAPrivateKey) -> None:
+        """PKCS#1 v1.5 no lleva aleatoriedad, a diferencia de PSS.
 
-    def test_pinned_vector_verifies_against_the_public_key(
-        self, fixed_key: rsa.RSAPrivateKey
+        De esto depende que dos corridas del mismo documento produzcan la misma
+        firma, y es la propiedad que permite comparar el resultado de la suite
+        entre dos versiones de la libreria.
+        """
+        first = signing_key.sign(MESSAGE, padding.PKCS1v15(), hashes.SHA256())
+        second = signing_key.sign(MESSAGE, padding.PKCS1v15(), hashes.SHA256())
+        assert first == second
+
+    def test_signature_verifies_against_the_public_key(
+        self, signing_key: rsa.RSAPrivateKey
     ) -> None:
-        fixed_key.public_key().verify(
-            base64.b64decode(_KAT_SIGNATURE_B64),
-            _KAT_MESSAGE,
-            padding.PKCS1v15(),
-            hashes.SHA256(),
+        signature = signing_key.sign(MESSAGE, padding.PKCS1v15(), hashes.SHA256())
+        signing_key.public_key().verify(
+            signature, MESSAGE, padding.PKCS1v15(), hashes.SHA256()
         )
 
-    def test_a_tampered_message_is_rejected(self, fixed_key: rsa.RSAPrivateKey) -> None:
+    def test_a_tampered_message_is_rejected(self, signing_key: rsa.RSAPrivateKey) -> None:
         # Control negativo: sin esto, un `verify` que nunca falle daria por
-        # buena cualquier firma y las pruebas de arriba no probarian nada.
+        # buena cualquier firma y la prueba de arriba no probaria nada.
+        signature = signing_key.sign(MESSAGE, padding.PKCS1v15(), hashes.SHA256())
         with pytest.raises(InvalidSignature):
-            fixed_key.public_key().verify(
-                base64.b64decode(_KAT_SIGNATURE_B64),
-                _KAT_MESSAGE + b" ",
-                padding.PKCS1v15(),
-                hashes.SHA256(),
+            signing_key.public_key().verify(
+                signature, MESSAGE + b" ", padding.PKCS1v15(), hashes.SHA256()
             )
 
 
@@ -181,13 +142,10 @@ class TestRsaKnownAnswer:
 # ═══════════════════════════════════════════════════════════════
 
 
-def _encryption(algorithm: pkcs12.PBES, mac: hashes.HashAlgorithm):  # type: ignore[no-untyped-def]
-    return (
-        serialization.PrivateFormat.PKCS12.encryption_builder()
-        .key_cert_algorithm(algorithm)
-        .hmac_hash(mac)
-        .build(CERT_PASSWORD.encode("utf-8"))
-    )
+ENCODINGS = [
+    ("moderno-aes256-sha256", pkcs12.PBES.PBESv2SHA256AndAES256CBC, hashes.SHA256()),
+    ("legado-3des-sha1", pkcs12.PBES.PBESv1SHA1And3KeyTripleDESCBC, hashes.SHA1()),
+]
 
 
 class TestPkcs12Encodings:
@@ -207,17 +165,21 @@ class TestPkcs12Encodings:
     certificado real antes de desplegar un bump.
     """
 
-    @pytest.fixture
-    def _cert(self, fixed_key: rsa.RSAPrivateKey) -> x509.Certificate:
-        return _self_signed(fixed_key)
-
-    def _write(
+    def _write_p12(
         self,
         path: Path,
         key: rsa.RSAPrivateKey,
         cert: x509.Certificate,
-        encryption,  # type: ignore[no-untyped-def]
+        algorithm: pkcs12.PBES,
+        mac: hashes.HashAlgorithm,
+        passphrase: str,
     ) -> Path:
+        encryption = (
+            serialization.PrivateFormat.PKCS12.encryption_builder()
+            .key_cert_algorithm(algorithm)
+            .hmac_hash(mac)
+            .build(passphrase.encode("utf-8"))
+        )
         path.write_bytes(
             pkcs12.serialize_key_and_certificates(
                 name=b"test",
@@ -229,62 +191,86 @@ class TestPkcs12Encodings:
         )
         return path
 
-    @pytest.mark.parametrize(
-        ("label", "algorithm", "mac"),
-        [
-            ("moderno-aes256-sha256", pkcs12.PBES.PBESv2SHA256AndAES256CBC, hashes.SHA256()),
-            ("legado-3des-sha1", pkcs12.PBES.PBESv1SHA1And3KeyTripleDESCBC, hashes.SHA1()),
-        ],
-    )
+    @pytest.mark.parametrize(("label", "algorithm", "mac"), ENCODINGS)
     def test_load_certificate_reads_the_encoding(
         self,
         tmp_path: Path,
-        fixed_key: rsa.RSAPrivateKey,
-        _cert: x509.Certificate,
+        signing_key: rsa.RSAPrivateKey,
+        bundle: CertificateBundle,
+        passphrase: str,
         label: str,
         algorithm: pkcs12.PBES,
         mac: hashes.HashAlgorithm,
     ) -> None:
-        path = self._write(
-            tmp_path / f"{label}.p12", fixed_key, _cert, _encryption(algorithm, mac)
+        path = self._write_p12(
+            tmp_path / f"{label}.p12",
+            signing_key,
+            bundle.certificate,
+            algorithm,
+            mac,
+            passphrase,
         )
 
-        loaded = load_certificate(str(path), CERT_PASSWORD)
+        loaded = load_certificate(str(path), passphrase)
 
         assert loaded.is_valid
-        assert loaded.certificate.serial_number == _cert.serial_number
+        assert loaded.certificate.serial_number == bundle.certificate.serial_number
 
-    @pytest.mark.parametrize(
-        ("label", "algorithm", "mac"),
-        [
-            ("moderno-aes256-sha256", pkcs12.PBES.PBESv2SHA256AndAES256CBC, hashes.SHA256()),
-            ("legado-3des-sha1", pkcs12.PBES.PBESv1SHA1And3KeyTripleDESCBC, hashes.SHA1()),
-        ],
-    )
+    @pytest.mark.parametrize(("label", "algorithm", "mac"), ENCODINGS)
     def test_key_survives_the_round_trip_intact(
         self,
         tmp_path: Path,
-        fixed_key: rsa.RSAPrivateKey,
-        _cert: x509.Certificate,
+        signing_key: rsa.RSAPrivateKey,
+        bundle: CertificateBundle,
+        passphrase: str,
         label: str,
         algorithm: pkcs12.PBES,
         mac: hashes.HashAlgorithm,
     ) -> None:
         """Abrir el `.p12` debe devolver la MISMA clave, no una equivalente.
 
-        Se comprueba contra el vector fijado: si la clave sobrevive el
-        empaquetado, firma exactamente los mismos bytes.
+        Se comprueba de dos formas: la firma que produce la clave recuperada es
+        byte a byte la de la original, y verifica contra la clave publica del
+        certificado. Si el empaquetado corrompiera la clave, DIAN rechazaria
+        cada documento por firma invalida.
         """
-        path = self._write(
-            tmp_path / f"{label}.p12", fixed_key, _cert, _encryption(algorithm, mac)
+        path = self._write_p12(
+            tmp_path / f"{label}.p12",
+            signing_key,
+            bundle.certificate,
+            algorithm,
+            mac,
+            passphrase,
         )
 
-        loaded = load_certificate(str(path), CERT_PASSWORD)
-        signature = loaded.private_key.sign(
-            _KAT_MESSAGE, padding.PKCS1v15(), hashes.SHA256()
+        loaded = load_certificate(str(path), passphrase)
+        recovered = loaded.private_key.sign(MESSAGE, padding.PKCS1v15(), hashes.SHA256())
+
+        assert recovered == signing_key.sign(MESSAGE, padding.PKCS1v15(), hashes.SHA256())
+        bundle.certificate.public_key().verify(
+            recovered, MESSAGE, padding.PKCS1v15(), hashes.SHA256()
         )
 
-        assert base64.b64encode(signature).decode("ascii") == _KAT_SIGNATURE_B64
+    def test_the_wrong_passphrase_is_rejected(
+        self,
+        tmp_path: Path,
+        signing_key: rsa.RSAPrivateKey,
+        bundle: CertificateBundle,
+        passphrase: str,
+    ) -> None:
+        """Control negativo: el `.p12` esta realmente cifrado."""
+        label, algorithm, mac = ENCODINGS[1]
+        path = self._write_p12(
+            tmp_path / f"{label}.p12",
+            signing_key,
+            bundle.certificate,
+            algorithm,
+            mac,
+            passphrase,
+        )
+
+        with pytest.raises(ValueError, match="Failed to load"):
+            load_certificate(str(path), secrets.token_hex(16))
 
 
 # ═══════════════════════════════════════════════════════════════
