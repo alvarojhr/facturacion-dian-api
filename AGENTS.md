@@ -90,6 +90,70 @@ se ajustan a esquemas externos rígidos.
 - **No** "arregles" la config de mypy para forzar `strict` aquí sin entender por
   qué está relajada. Si reduces un override, justifícalo y respáldalo con pruebas.
 
+### 4.1 Subir `cryptography` (o `signxml`, o `lxml`)
+
+`tests/test_signing.py` fija la **estructura** del XML firmado; no comprueba que
+la firma sea válida ni que un `.p12` real se pueda abrir. Ese hueco lo cubre
+`tests/test_crypto_contract.py`, que existe precisamente para atravesarse en el
+camino de un bump:
+
+- **El primitivo RSA**: determinismo del relleno PKCS#1 v1.5 —del que depende que
+  dos corridas del mismo documento firmen igual— y verificación de lo firmado
+  contra la clave pública.
+- **Carga de PKCS#12 legado** (PBESv1 + 3DES + MAC SHA-1), el empaquetado con el
+  que llegan muchos certificados reales. La suite antigua solo probaba el moderno
+  (PBESv2 + AES-256), así que una versión que dejara de leer el legado rompía el
+  arranque del servicio con CI en verde.
+- **Verificación criptográfica de la firma WS-Security**: digests de cada
+  `ds:Reference` y `ds:SignatureValue` contra la clave pública, con sus controles
+  negativos.
+
+Procedimiento, no negociable:
+
+1. Corre la suite **en la versión que el lock fija hoy**, no en la que instale tu
+   entorno. `pip install --no-deps --require-hashes -r requirements.lock` en un
+   venv limpio. Esa es la línea base.
+2. Regenera el lock **acotando el bump** para no arrastrar el resto de la pila de
+   firma: `uv pip compile requirements.in --python-version 3.12 --generate-hashes
+   --upgrade-package <paquete> --output-file requirements.lock`. El diff debe
+   tocar un solo paquete; si toca más, revísalo antes de seguir.
+3. Repite la suite en un venv construido desde el lock nuevo y **compara contra la
+   línea base**. Mismo número de pruebas, mismo resultado.
+
+**Esa comparación entre versiones es el mecanismo — no fijes bytes en un fichero
+para lograrla.** La tentación es escribir un *known-answer test* con una clave y
+una firma esperada en el código; se probó y estuvo mal: es material de clave
+privada versionado en un repo público, lo marcó GitGuardian y con razón (ver
+PR #15). Ninguna prueba de este repo debe llevar claves, contraseñas ni firmas
+escritas en el código: todo se genera en tiempo de ejecución. Y si un escáner de
+secretos salta, **el arreglo nunca es reformatear el material para que no lo
+detecte** — eso es esquivar el control, no resolverlo.
+
+> Ojo con la trampa del entorno: CI instala con `pip install -e` desde los
+> `pyproject.toml`, que llevan restricciones `>=`, así que las pruebas corren
+> contra la **última** versión publicada. El `Dockerfile` instala desde
+> `requirements.lock`. Producción y CI no ejecutan la misma versión, y ninguna
+> alerta lo dice: al validar un bump, mira siempre el lock.
+
+Hay un caso que este repo **no** puede probar solo: los `.p12` cifrados con
+RC2-40 que todavía emite alguna autoridad de certificación. `cryptography` no
+sabe escribirlos, así que no hay forma de generar el fixture. La comprobación es
+contra el certificado real, y hay dos formas:
+
+```bash
+# Antes de desplegar, sobre el .p12 en la mano:
+openssl pkcs12 -in cert.p12 -info -noout -passin pass:LA_CLAVE
+
+# Después de desplegar: /health carga el certificado de verdad.
+curl -H "Authorization: Bearer $TOKEN" "$SERVICE_URL/health"
+# → certificate_loaded: true  ⇒ la versión nueva abre ese empaquetado
+```
+
+`/health` es la prueba definitiva porque llama a `get_certificate_bundle()`, que
+es carga perezosa: **que el contenedor arranque no demuestra que el certificado
+abra**. Si un bump rompiera el empaquetado, el servicio quedaría en pie y fallaría
+en la primera factura.
+
 ---
 
 ## 5. CUFE/CUDE: corrección crítica
