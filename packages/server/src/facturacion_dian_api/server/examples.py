@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+from typing import Any
 
 DOCUMENT_KEY_EXAMPLE = "demo-document-key-not-real"
 SIGNED_XML_BASE64 = base64.b64encode(b"<Signed>ok</Signed>").decode("ascii")
@@ -287,7 +288,7 @@ DOCUMENT_SUBMISSION_RESPONSE_EXAMPLE = {
     },
 }
 
-DOCUMENT_STATUS_RESPONSE_EXAMPLE = {
+DOCUMENT_STATUS_RESPONSE_EXAMPLE: dict[str, Any] = {
     "submission_id": "2c6c3df3-6301-4170-9e1e-a2441a8b5d5e",
     "tracking_id": "2c6c3df3-6301-4170-9e1e-a2441a8b5d5e",
     "client_reference": None,
@@ -304,9 +305,36 @@ DOCUMENT_STATUS_RESPONSE_EXAMPLE = {
         "status_description": "Document not found.",
         "status_message": "Tracking ID not found.",
         "tracking_id": "2c6c3df3-6301-4170-9e1e-a2441a8b5d5e",
+        "document_key": None,
         "error_messages": [],
     },
     "artifacts": None,
+}
+
+# Documento ya procesado: DIAN reporta la clave (XmlDocumentKey) y el AR firmado.
+DOCUMENT_STATUS_ACCEPTED_RESPONSE_EXAMPLE: dict[str, Any] = {
+    "submission_id": "0a1b2c3d-4e5f-6071-8293-a4b5c6d7e8f9",
+    "tracking_id": "0a1b2c3d-4e5f-6071-8293-a4b5c6d7e8f9",
+    "client_reference": None,
+    "document_key": DOCUMENT_KEY_EXAMPLE,
+    "qr_url": f"https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey={DOCUMENT_KEY_EXAMPLE}",
+    "status": "accepted",
+    "messages": ["Procesado Correctamente."],
+    "dian_response": {
+        "is_valid": True,
+        "status_code": "00",
+        "status_description": "Procesado Correctamente.",
+        "status_message": "La Factura electronica FDK000001, ha sido autorizada.",
+        "tracking_id": "0a1b2c3d-4e5f-6071-8293-a4b5c6d7e8f9",
+        "document_key": DOCUMENT_KEY_EXAMPLE,
+        "error_messages": [],
+    },
+    "artifacts": {
+        "xml_base64": None,
+        "xml_filename": None,
+        "application_response_xml_base64": "PEFwcGxpY2F0aW9uUmVzcG9uc2U+Li4uPC9BcHBsaWNhdGlvblJlc3BvbnNlPg==",
+        "application_response_xml_filename": "ar_0a1b2c3d-4e5f-6071-8293-a4b5c6d7e8f9.xml",
+    },
 }
 
 ATTACHED_DOCUMENT_REQUEST_EXAMPLE = {

@@ -331,6 +331,63 @@ class TestDocumentStatus:
         )
         assert data["artifacts"]["application_response_xml_filename"] == "ar_track-xml.xml"
 
+    def test_status_returns_document_key_and_qr_url_when_dian_reports_them(
+        self,
+        client: TestClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Una consulta de estado debe bastar para reconciliar un envio cuyo acuse se
+        perdio: DIAN reporta la clave del documento en XmlDocumentKey, asi que se
+        expone igual que en el envio (document_key + qr_url). Sin esto el llamador
+        tendria que recalcular el CUFE, y el recalculo da OTRA clave si el reintento
+        se firmo con otra marca de tiempo (la hora entra en la semilla).
+        """
+        document_key = "c" * 96
+
+        async def fake_status(self: DianClient, tracking_id: str) -> DianResponse:
+            del self
+            return DianResponse(
+                is_valid=True,
+                status_code="00",
+                status_description="Procesado Correctamente.",
+                status_message="Documento autorizado.",
+                tracking_id=tracking_id,
+                document_key=document_key,
+            )
+
+        monkeypatch.setattr(DianClient, "get_status_zip", fake_status)
+        monkeypatch.setattr(DianClient, "get_status", fake_status)
+        response = client.get("/api/v1/documents/submissions/track-key")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["document_key"] == document_key
+        assert data["qr_url"] == (
+            f"https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey={document_key}"
+        )
+
+    def test_status_without_document_key_reports_none(
+        self,
+        client: TestClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Sin clave reportada no se inventa ninguna (ni un qr_url a medias)."""
+
+        async def fake_status(self: DianClient, tracking_id: str) -> DianResponse:
+            del self
+            return DianResponse(
+                is_valid=False,
+                status_code="99",
+                status_description="Document not found.",
+                tracking_id=tracking_id,
+            )
+
+        monkeypatch.setattr(DianClient, "get_status_zip", fake_status)
+        monkeypatch.setattr(DianClient, "get_status", fake_status)
+        data = client.get("/api/v1/documents/submissions/track-none").json()
+        assert data["document_key"] is None
+        assert data["qr_url"] is None
+
 
 class TestAttachedDocument:
     """Test AttachedDocument generation endpoint."""
