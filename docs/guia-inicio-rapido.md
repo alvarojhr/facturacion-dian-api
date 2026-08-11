@@ -63,6 +63,10 @@ curl --request POST "http://localhost:8000/api/v1/customers/lookup" `
   --data "@docs/examples/customer-lookup.json"
 ```
 
+Si responde 502 con `DIAN upstream returned HTTP 404`, revisa
+`DIAN_LOOKUP_ENVIRONMENT`: el registro de adquirientes solo responde en
+produccion, aunque `DIAN_ENVIRONMENT` siga en habilitacion.
+
 ## Docker
 
 ```powershell
