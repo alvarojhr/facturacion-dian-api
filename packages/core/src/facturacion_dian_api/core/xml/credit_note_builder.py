@@ -74,7 +74,9 @@ def build_credit_note_xml(
     )
 
     has_reference = bool(req.referenced_invoice_number)
-    customization_id = CUSTOMIZATION_CREDIT_NOTE if has_reference else CUSTOMIZATION_CREDIT_NOTE_NO_ASOCIADA
+    customization_id = (
+        CUSTOMIZATION_CREDIT_NOTE if has_reference else CUSTOMIZATION_CREDIT_NOTE_NO_ASOCIADA
+    )
 
     _sub(root, cbc("UBLVersionID"), "UBL 2.1")
     _sub(root, cbc("CustomizationID"), customization_id)
@@ -130,7 +132,8 @@ def build_credit_note_xml(
 
     build_supplier_party(root, req.prefix, req)
     build_customer_party(root, req)
-    build_payment_means(root, req.payment_method, req.issue_date)
+    assert req.payment_means is not None
+    build_payment_means(root, req.payment_form, req.payment_means, req.issue_date)
     build_tax_totals(root, req.lines)
     build_legal_monetary_total(root, req.lines, req.total)
 
@@ -148,4 +151,3 @@ def credit_note_to_xml_string(root: etree._Element) -> bytes:
         encoding="UTF-8",
         pretty_print=True,
     )
-

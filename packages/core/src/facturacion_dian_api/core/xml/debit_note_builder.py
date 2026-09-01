@@ -110,7 +110,8 @@ def build_debit_note_xml(
 
     build_supplier_party(root, req.prefix, req)
     build_customer_party(root, req)
-    build_payment_means(root, req.payment_method, req.issue_date)
+    assert req.payment_means is not None
+    build_payment_means(root, req.payment_form, req.payment_means, req.issue_date)
     build_tax_totals(root, req.lines)
     build_requested_monetary_total(root, req.lines, req.total)
 
@@ -128,4 +129,3 @@ def debit_note_to_xml_string(root: etree._Element) -> bytes:
         encoding="UTF-8",
         pretty_print=True,
     )
-
