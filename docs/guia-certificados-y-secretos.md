@@ -26,6 +26,7 @@ La API necesita secretos y material criptografico para firmar y hablar con DIAN.
 - `DIAN_SOFTWARE_PIN`
 - `DIAN_TEST_SET_ID`
 - `DIAN_TECHNICAL_KEY`
+- `COMPANY_ADDITIONAL_ACCOUNT_ID` (`1` persona juridica, `2` persona natural)
 
 ## Recomendaciones operativas
 

@@ -125,6 +125,10 @@ No se publica PyPI ni npm porque el producto publico de `facturacion-dian-api` e
 - No uses los valores demo de la documentacion en ambientes reales.
 - Manten el contrato HTTP estable y versionado de forma intencional.
 
+La validación real opt-in está documentada en
+[`docs/prueba-habilitacion.md`](docs/prueba-habilitacion.md). Nunca se ejecuta
+en CI normal ni incorpora payloads privados al repositorio.
+
 ## Contribuir
 
 Revisa [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) y [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) antes de abrir cambios o reportes.
