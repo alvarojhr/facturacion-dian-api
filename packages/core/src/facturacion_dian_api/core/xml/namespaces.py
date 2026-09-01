@@ -110,7 +110,7 @@ INVOICE_TYPE_DOC_EQUIVALENTE_POS = "20"
 
 CREDIT_NOTE_TYPE = "91"
 
-CUSTOMIZATION_CREDIT_NOTE = "20"          # NC asociada (referencia FE conocida)
+CUSTOMIZATION_CREDIT_NOTE = "20"  # NC asociada (referencia FE conocida)
 CUSTOMIZATION_CREDIT_NOTE_NO_ASOCIADA = "22"  # NC no asociada (Res. 42/2020 Art. 30 §1)
 CUSTOMIZATION_DEBIT_NOTE = "30"
 CUSTOMIZATION_DEBIT_NOTE_PERIOD = "32"
@@ -118,11 +118,11 @@ CUSTOMIZATION_FACTURA = "10"
 CUSTOMIZATION_DOC_EQUIVALENTE = "10"
 
 PAYMENT_MEANS = {
+    "UNSPECIFIED": "1",
     "CASH": "10",
-    "CARD": "48",
+    "CREDIT_CARD": "48",
+    "DEBIT_CARD": "49",
     "TRANSFER": "31",
-    "CHECK": "20",
-    "CREDIT": "30",
 }
 
 DIAN_TAX_SCHEME_IVA = "01"
@@ -136,9 +136,7 @@ TAX_TYPE_TO_DIAN = {
     "EXCLUDED": {"code": "ZZ", "name": "No aplica", "percent": "0.00"},
 }
 
-APPLICATION_RESPONSE_PROFILE_ID = (
-    "DIAN 2.1: ApplicationResponse de la Factura Electrónica de Venta"
-)
+APPLICATION_RESPONSE_PROFILE_ID = "DIAN 2.1: ApplicationResponse de la Factura Electrónica de Venta"
 # CustomizationID del ApplicationResponse de eventos del receptor: AAD02 exige
 # el literal "1" (a diferencia de la factura, donde codifica el tipo de operación).
 APPLICATION_RESPONSE_CUSTOMIZATION_ID = "1"

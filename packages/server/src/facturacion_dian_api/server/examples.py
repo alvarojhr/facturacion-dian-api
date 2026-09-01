@@ -17,7 +17,8 @@ DOCUMENT_SUBMISSION_INVOICE_EXAMPLE = {
         "type": "FACTURA_ELECTRONICA",
         "issue_date": "2026-03-12",
         "issue_time": "14:30:00-05:00",
-        "payment_method": "CASH",
+        "payment_form": "CONTADO",
+        "payment_means": "CASH",
     },
     "issuer": {
         "nit": "900123456",
@@ -97,7 +98,8 @@ DOCUMENT_SUBMISSION_POS_EXAMPLE = {
         "type": "DOCUMENTO_EQUIVALENTE_POS",
         "issue_date": "2026-03-12",
         "issue_time": "10:15:30-05:00",
-        "payment_method": "CARD",
+        "payment_form": "CONTADO",
+        "payment_means": "CREDIT_CARD",
         "point_of_sale": {
             "register_plate": "POS-1",
             "register_location": "Mostrador principal",
@@ -147,7 +149,8 @@ DOCUMENT_SUBMISSION_CREDIT_NOTE_EXAMPLE = {
         "type": "NOTA_CREDITO",
         "issue_date": "2026-03-13",
         "issue_time": "09:00:00-05:00",
-        "payment_method": "CASH",
+        "payment_form": "CONTADO",
+        "payment_means": "CASH",
     },
     "buyer": {
         "document_number": "800199436",
@@ -193,7 +196,8 @@ DOCUMENT_SUBMISSION_DEBIT_NOTE_EXAMPLE = {
         "type": "NOTA_DEBITO",
         "issue_date": "2026-03-13",
         "issue_time": "11:00:00-05:00",
-        "payment_method": "CASH",
+        "payment_form": "CONTADO",
+        "payment_means": "CASH",
     },
     "buyer": {
         "document_number": "800199436",
@@ -421,9 +425,7 @@ ERROR_502_EXAMPLE = {
     "detail": "HTTP error calling DIAN GetStatus: Server disconnected without sending a response"
 }
 
-ERROR_504_EXAMPLE = {
-    "detail": "Timeout calling DIAN SendTestSetAsync"
-}
+ERROR_504_EXAMPLE = {"detail": "Timeout calling DIAN SendTestSetAsync"}
 
 EVENT_CUDE_EXAMPLE = "demo-event-cude-not-real"
 APPLICATION_RESPONSE_XML_BASE64 = base64.b64encode(

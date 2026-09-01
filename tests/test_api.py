@@ -61,6 +61,40 @@ class TestDocumentSubmit:
         assert data["artifacts"]["xml_filename"] == "ws_FDK000001.xml"
         assert data["client_reference"] == "client-ref-001"
 
+    def test_rejects_credit_without_due_date(
+        self,
+        client: TestClient,
+        sample_invoice_payload: dict,
+    ) -> None:
+        sample_invoice_payload["document"] = {
+            **sample_invoice_payload["document"],
+            "payment_method": None,
+            "payment_form": "CREDITO",
+            "payment_means": "TRANSFER",
+        }
+        response = client.post("/api/v1/documents/submissions", json=sample_invoice_payload)
+        assert response.status_code == 422
+
+    def test_rejects_credit_for_final_consumer(
+        self,
+        client: TestClient,
+        sample_invoice_payload: dict,
+    ) -> None:
+        sample_invoice_payload["document"] = {
+            **sample_invoice_payload["document"],
+            "payment_method": None,
+            "payment_form": "CREDITO",
+            "payment_means": "UNSPECIFIED",
+            "due_date": "2026-04-12",
+        }
+        sample_invoice_payload["buyer"] = {
+            "document_number": "222222222222",
+            "document_type": "FINAL_CONSUMER",
+            "name": "Consumidor Final",
+        }
+        response = client.post("/api/v1/documents/submissions", json=sample_invoice_payload)
+        assert response.status_code == 422
+
     def test_submit_accepts_and_maps_complete_body_owned_issuer(
         self,
         client: TestClient,
@@ -120,7 +154,10 @@ class TestDocumentSubmit:
             "issuer_phone": issuer["phone"],
             "issuer_email": issuer["email"],
         }
-        assert client.post("/api/v1/documents/submissions", json=sample_invoice_payload).status_code == 200
+        assert (
+            client.post("/api/v1/documents/submissions", json=sample_invoice_payload).status_code
+            == 200
+        )
 
     def test_submit_pos_document_returns_cude(
         self,
@@ -228,9 +265,7 @@ class TestDocumentSubmit:
         monkeypatch.setattr(DianClient, "send_test_set_async", fake_submit_with_ar)
         monkeypatch.setattr(DianClient, "send_bill_sync", fake_submit_with_ar)
 
-        response = client.post(
-            "/api/v1/documents/submissions", json=sample_invoice_payload
-        )
+        response = client.post("/api/v1/documents/submissions", json=sample_invoice_payload)
         assert response.status_code == 200
         artifacts = response.json()["artifacts"]
         # Ambos artefactos presentes: emisor + DIAN
@@ -251,9 +286,7 @@ class TestDocumentSubmit:
         """
         # La fixture global stub_live_dian_calls devuelve una DianResponse sin
         # xml_bytes, lo cual representa el escenario de habilitación asíncrona.
-        response = client.post(
-            "/api/v1/documents/submissions", json=sample_invoice_payload
-        )
+        response = client.post("/api/v1/documents/submissions", json=sample_invoice_payload)
         assert response.status_code == 200
         artifacts = response.json()["artifacts"]
         assert artifacts["xml_base64"] is not None  # XML del emisor siempre
@@ -429,9 +462,7 @@ class TestAttachedDocument:
                 "cac": "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2",
                 "cbc": "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2",
             }
-            doc_ref = root.find(
-                "cac:ParentDocumentLineReference/cac:DocumentReference", ns
-            )
+            doc_ref = root.find("cac:ParentDocumentLineReference/cac:DocumentReference", ns)
             assert doc_ref is not None
             assert doc_ref.findtext("cbc:DocumentType", namespaces=ns) == "ApplicationResponse"
             assert doc_ref.find("cac:ResultOfVerification", ns) is not None
@@ -454,7 +485,9 @@ class TestEmitEvent:
         assert data["client_reference"] == "acuse-erp-1001"
         artifacts = data["artifacts"]
         assert artifacts["application_response_xml_filename"] == "ar_030_SETP990000123.xml"
-        assert base64.b64decode(artifacts["application_response_xml_base64"]) == b"<Signed>ok</Signed>"
+        assert (
+            base64.b64decode(artifacts["application_response_xml_base64"]) == b"<Signed>ok</Signed>"
+        )
         # DIAN no devolvio XML en el stub, asi que el artefacto propio queda nulo.
         assert artifacts["dian_response_xml_base64"] is None
 
@@ -620,7 +653,9 @@ class TestEmitEvent:
                 is_valid=False,
                 status_code="99",
                 status_description="Documento con errores",
-                error_messages=["Regla: AAD06, Rechazo: el valor UUID no esta correctamente calculado"],
+                error_messages=[
+                    "Regla: AAD06, Rechazo: el valor UUID no esta correctamente calculado"
+                ],
                 tracking_id="event-track-err",
                 xml_bytes=b"<ApplicationResponse>dian</ApplicationResponse>",
             )

@@ -70,7 +70,9 @@ def _money(value_cop: int) -> str:
     return str(Decimal(value_cop).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
 
 
-def _sub(parent: etree._Element, tag: str, text: str | None = None, **attrib: str) -> etree._Element:
+def _sub(
+    parent: etree._Element, tag: str, text: str | None = None, **attrib: str
+) -> etree._Element:
     """Create a sub-element with optional text and attributes."""
     el = etree.SubElement(parent, tag, **attrib)
     if text is not None:
@@ -268,12 +270,10 @@ def build_ubl_extensions(
         manufacturer_extension = _sub(extensions, ext("UBLExtension"))
         manufacturer_content = _sub(manufacturer_extension, ext("ExtensionContent"))
         manufacturer_name = (
-            settings.dian.software_manufacturer_name.strip()
-            or settings.company.name
+            settings.dian.software_manufacturer_name.strip() or settings.company.name
         )
         manufacturer_company_name = (
-            settings.dian.software_manufacturer_company_name.strip()
-            or settings.company.name
+            settings.dian.software_manufacturer_company_name.strip() or settings.company.name
         )
         software_name = settings.dian.software_name.strip() or "Facturacion DIAN Kit"
         _build_named_value_extension(
@@ -311,7 +311,12 @@ def build_ubl_extensions(
             "InformacionCajaVenta",
             [
                 ("PlacaCaja", _truncate(req.pos_register_plate, 100, "POS-1")),
-                ("Ubicaci\u00f3nCaja", _truncate(req.pos_register_location, 100, settings.company.address or "Punto de venta")),
+                (
+                    "Ubicaci\u00f3nCaja",
+                    _truncate(
+                        req.pos_register_location, 100, settings.company.address or "Punto de venta"
+                    ),
+                ),
                 ("Cajero", _truncate(req.cashier_name, 100, "Cajero POS")),
                 ("TipoCaja", _truncate(req.pos_register_type, 100, "POS")),
                 ("C\u00f3digoVenta", _truncate(req.sale_code, 100, req.invoice_number)),
@@ -347,12 +352,24 @@ def build_invoice_control(
 
 def resolve_invoice_control(req: DocumentSubmitRequest) -> tuple[int, int, str, str]:
     """Resolve resolution range and validity, preferring request-specific data."""
-    valid_from = req.resolution_valid_from.strip() if req.resolution_valid_from else settings.dian.resolution_valid_from
-    valid_to = req.resolution_valid_to.strip() if req.resolution_valid_to else settings.dian.resolution_valid_to
+    valid_from = (
+        req.resolution_valid_from.strip()
+        if req.resolution_valid_from
+        else settings.dian.resolution_valid_from
+    )
+    valid_to = (
+        req.resolution_valid_to.strip()
+        if req.resolution_valid_to
+        else settings.dian.resolution_valid_to
+    )
 
     return (
-        req.resolution_range_from if req.resolution_range_from is not None else settings.dian.resolution_range_from,
-        req.resolution_range_to if req.resolution_range_to is not None else settings.dian.resolution_range_to,
+        req.resolution_range_from
+        if req.resolution_range_from is not None
+        else settings.dian.resolution_range_from,
+        req.resolution_range_to
+        if req.resolution_range_to is not None
+        else settings.dian.resolution_range_to,
         valid_from,
         valid_to,
     )
@@ -452,9 +469,15 @@ def build_customer_party(parent: etree._Element, req: DocumentSubmitRequest) -> 
     is_final_consumer = _is_final_consumer_request(req, customer_document_type)
     buyer_identifier = (req.customer_nit or "").strip() or FINAL_CONSUMER_ID
     buyer_identifier_type = CUSTOMER_DOCUMENT_SCHEME_NAMES[customer_document_type]
-    buyer_verification_digit = _compute_nit_dv(req.customer_nit) if customer_document_type == "NIT" else None
+    buyer_verification_digit = (
+        _compute_nit_dv(req.customer_nit) if customer_document_type == "NIT" else None
+    )
 
-    _sub(customer, cbc("AdditionalAccountID"), CUSTOMER_ADDITIONAL_ACCOUNT_IDS[customer_document_type])
+    _sub(
+        customer,
+        cbc("AdditionalAccountID"),
+        CUSTOMER_ADDITIONAL_ACCOUNT_IDS[customer_document_type],
+    )
 
     party = _sub(customer, cac("Party"))
     party_identification = _sub(party, cac("PartyIdentification"))
@@ -527,11 +550,16 @@ def build_customer_party(parent: etree._Element, req: DocumentSubmitRequest) -> 
             _sub(contact, cbc("ElectronicMail"), req.customer_email)
 
 
-def build_payment_means(parent: etree._Element, payment_method: str, due_date: str) -> None:
+def build_payment_means(
+    parent: etree._Element,
+    payment_form: str,
+    payment_means: str,
+    due_date: str,
+) -> None:
     """Build cac:PaymentMeans element."""
     pm = _sub(parent, cac("PaymentMeans"))
-    code = PAYMENT_MEANS.get(payment_method, "10")
-    _sub(pm, cbc("ID"), "1")
+    code = PAYMENT_MEANS[payment_means]
+    _sub(pm, cbc("ID"), "2" if payment_form == "CREDITO" else "1")
     _sub(pm, cbc("PaymentMeansCode"), code)
     _sub(pm, cbc("PaymentDueDate"), due_date)
 

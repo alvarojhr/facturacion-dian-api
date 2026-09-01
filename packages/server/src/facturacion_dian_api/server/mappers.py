@@ -76,10 +76,13 @@ def to_core_submission_request(req: DocumentSubmissionRequest) -> DocumentSubmit
         customer_country_code=buyer.country_code,
         issue_date=req.document.issue_date,
         issue_time=req.document.issue_time,
+        due_date=req.document.due_date,
         subtotal=req.totals.subtotal,
         tax_total=req.totals.tax_total,
         total=req.totals.total,
         lines=[DocumentLine.model_validate(item.model_dump()) for item in req.line_items],
+        payment_form=req.document.payment_form,
+        payment_means=req.document.payment_means,
         payment_method=req.document.payment_method,
         resolution_number=req.resolution.number,
         resolution_date=req.resolution.date,
@@ -100,9 +103,13 @@ def to_core_submission_request(req: DocumentSubmissionRequest) -> DocumentSubmit
         referenced_invoice_number=references.referenced_document_number if references else None,
         referenced_invoice_cufe=references.referenced_document_key if references else None,
         referenced_invoice_issue_date=references.referenced_issue_date if references else None,
-        credit_note_reason=references.reason if req.document.type == "NOTA_CREDITO" and references else None,
+        credit_note_reason=references.reason
+        if req.document.type == "NOTA_CREDITO" and references
+        else None,
         debit_note_number=req.document.number if req.document.type == "NOTA_DEBITO" else None,
-        debit_note_reason=references.reason if req.document.type == "NOTA_DEBITO" and references else None,
+        debit_note_reason=references.reason
+        if req.document.type == "NOTA_DEBITO" and references
+        else None,
         debit_note_response_code=(
             references.response_code if req.document.type == "NOTA_DEBITO" and references else None
         ),
@@ -214,7 +221,9 @@ def to_public_buyer_response(
     )
 
 
-def to_public_numbering_ranges(ranges: list[CoreNumberingRangePayload]) -> NumberingRangeLookupResponse:
+def to_public_numbering_ranges(
+    ranges: list[CoreNumberingRangePayload],
+) -> NumberingRangeLookupResponse:
     """Convert normalized numbering ranges to the public response model."""
 
     return NumberingRangeLookupResponse(

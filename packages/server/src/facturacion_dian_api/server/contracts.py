@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any, Literal, cast
 
 from facturacion_dian_api.core.models import (
@@ -12,6 +13,8 @@ from facturacion_dian_api.core.models import (
     Environment,
     EventStatus,
     EventType,
+    PaymentForm,
+    PaymentMeans,
 )
 from facturacion_dian_api.server.examples import (
     ATTACHED_DOCUMENT_REQUEST_EXAMPLE,
@@ -66,8 +69,50 @@ class DocumentInput(BaseModel):
     type: DocumentType
     issue_date: str = Field(description="YYYY-MM-DD")
     issue_time: str = Field(description="HH:MM:SS-05:00")
-    payment_method: str = Field(description="CASH | CARD | TRANSFER")
+    payment_form: PaymentForm = "CONTADO"
+    payment_means: PaymentMeans | None = None
+    due_date: str | None = Field(default=None, description="YYYY-MM-DD; obligatorio para CREDITO")
+    payment_method: str | None = Field(
+        default=None,
+        description="Compatibilidad: CASH | CARD | TRANSFER | CREDIT",
+    )
     point_of_sale: PointOfSaleInput | None = None
+
+    @model_validator(mode="after")
+    def normalize_payment_terms(self) -> DocumentInput:
+        try:
+            issue_date = date.fromisoformat(self.issue_date)
+            due_date = date.fromisoformat(self.due_date) if self.due_date else None
+        except ValueError as exc:
+            raise ValueError("issue_date/due_date deben usar una fecha YYYY-MM-DD válida") from exc
+        legacy_means = {
+            "CASH": "CASH",
+            "CARD": "CREDIT_CARD",
+            "TRANSFER": "TRANSFER",
+            "CHECK": "UNSPECIFIED",
+            "CREDIT": "UNSPECIFIED",
+        }.get(self.payment_method or "")
+        if self.payment_method and legacy_means is None:
+            raise ValueError("payment_method legacy no reconocido")
+        if self.payment_means is None:
+            if legacy_means is None:
+                raise ValueError("payment_means es obligatorio")
+            self.payment_means = legacy_means  # type: ignore[assignment]
+        elif legacy_means is not None and self.payment_means != legacy_means:
+            raise ValueError("payment_means contradice payment_method")
+        if self.payment_method == "CREDIT" and self.payment_form == "CONTADO":
+            self.payment_form = "CREDITO"
+        if self.payment_form == "CREDITO":
+            if self.type != "FACTURA_ELECTRONICA":
+                raise ValueError("CREDITO sólo aplica a FACTURA_ELECTRONICA")
+            if not self.due_date:
+                raise ValueError("due_date es obligatorio para CREDITO")
+            assert due_date is not None
+            if due_date <= issue_date:
+                raise ValueError("due_date debe ser posterior a issue_date")
+        elif self.due_date is not None:
+            raise ValueError("due_date sólo aplica cuando payment_form es CREDITO")
+        return self
 
 
 class IssuerInput(BaseModel):
@@ -164,6 +209,12 @@ class DocumentSubmissionRequest(BaseModel):
     environment: Environment | None = None
     submission_options: SubmissionOptionsInput | None = None
     client_reference: str | None = None
+
+    @model_validator(mode="after")
+    def reject_credit_for_final_consumer(self) -> DocumentSubmissionRequest:
+        if self.document.payment_form == "CREDITO" and self.buyer.document_type == "FINAL_CONSUMER":
+            raise ValueError("CREDITO no está permitido para consumidor final")
+        return self
 
 
 class SubmissionArtifactPayload(BaseModel):
@@ -364,7 +415,9 @@ class EventReceiverPersonInput(BaseModel):
     """
 
     document_number: str
-    document_type: str = Field(default="13", description="Codigo DIAN @schemeName (13 = CC, 31 = NIT)")
+    document_type: str = Field(
+        default="13", description="Codigo DIAN @schemeName (13 = CC, 31 = NIT)"
+    )
     first_name: str
     family_name: str
     job_title: str | None = None
