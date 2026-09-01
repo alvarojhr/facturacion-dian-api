@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 DocumentType = Literal[
     "FACTURA_ELECTRONICA",
@@ -15,6 +16,8 @@ DocumentType = Literal[
 Environment = Literal["habilitacion", "produccion"]
 DocumentStatus = Literal["accepted", "rejected", "error"]
 CustomerDocumentType = Literal["FINAL_CONSUMER", "NIT", "CC", "CE", "TI", "PASSPORT"]
+PaymentForm = Literal["CONTADO", "CREDITO"]
+PaymentMeans = Literal["CASH", "CREDIT_CARD", "DEBIT_CARD", "TRANSFER", "UNSPECIFIED"]
 
 # Eventos RADIAN del receptor de la factura. El 034 (aceptación tácita) no se
 # implementa: lo registra el emisor, no el adquiriente.
@@ -75,11 +78,16 @@ class DocumentSubmitRequest(BaseModel):
     customer_country_code: str | None = None
     issue_date: str = Field(description="YYYY-MM-DD")
     issue_time: str = Field(description="HH:MM:SS-05:00")
+    due_date: str | None = Field(default=None, description="YYYY-MM-DD; obligatorio para CREDITO")
     subtotal: int = Field(description="COP integer")
     tax_total: int = Field(description="COP integer")
     total: int = Field(description="COP integer")
     lines: list[DocumentLine]
-    payment_method: str = Field(description="CASH | CARD | TRANSFER")
+    payment_form: PaymentForm = "CONTADO"
+    payment_means: PaymentMeans | None = None
+    # Compatibilidad transitoria con integradores anteriores. El dominio sólo
+    # consume payment_form/payment_means después de esta normalización.
+    payment_method: str | None = Field(default=None)
     resolution_number: str
     resolution_date: str | None = None
     prefix: str
@@ -103,6 +111,45 @@ class DocumentSubmitRequest(BaseModel):
     debit_note_number: str | None = None
     debit_note_reason: str | None = None
     debit_note_response_code: str | None = None
+
+    @model_validator(mode="after")
+    def normalize_payment_terms(self) -> DocumentSubmitRequest:
+        try:
+            issue_date = date.fromisoformat(self.issue_date)
+            due_date = date.fromisoformat(self.due_date) if self.due_date else None
+        except ValueError as exc:
+            raise ValueError("issue_date/due_date deben usar una fecha YYYY-MM-DD válida") from exc
+        legacy_means = {
+            "CASH": "CASH",
+            "CARD": "CREDIT_CARD",
+            "TRANSFER": "TRANSFER",
+            "CHECK": "UNSPECIFIED",
+            "CREDIT": "UNSPECIFIED",
+        }.get(self.payment_method or "")
+        if self.payment_method and legacy_means is None:
+            raise ValueError("payment_method legacy no reconocido")
+        if self.payment_means is None:
+            if legacy_means is None:
+                raise ValueError("payment_means es obligatorio")
+            self.payment_means = legacy_means  # type: ignore[assignment]
+        elif legacy_means is not None and self.payment_means != legacy_means:
+            raise ValueError("payment_means contradice payment_method")
+
+        if self.payment_method == "CREDIT" and self.payment_form == "CONTADO":
+            self.payment_form = "CREDITO"
+        if self.payment_form == "CREDITO":
+            if self.document_type != "FACTURA_ELECTRONICA":
+                raise ValueError("CREDITO sólo aplica a FACTURA_ELECTRONICA")
+            if not self.due_date:
+                raise ValueError("due_date es obligatorio para CREDITO")
+            assert due_date is not None
+            if due_date <= issue_date:
+                raise ValueError("due_date debe ser posterior a issue_date")
+            if self.customer_document_type == "FINAL_CONSUMER":
+                raise ValueError("CREDITO no está permitido para consumidor final")
+        elif self.due_date is not None:
+            raise ValueError("due_date sólo aplica cuando payment_form es CREDITO")
+        return self
 
 
 class SubmissionArtifacts(BaseModel):

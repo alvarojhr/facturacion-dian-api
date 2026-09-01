@@ -5,7 +5,8 @@
     "type": "DOCUMENTO_EQUIVALENTE_POS",
     "issue_date": "2026-03-12",
     "issue_time": "10:15:30-05:00",
-    "payment_method": "CARD",
+    "payment_form": "CONTADO",
+    "payment_means": "CREDIT_CARD",
     "point_of_sale": {
       "register_plate": "POS-1",
       "register_location": "Mostrador principal",

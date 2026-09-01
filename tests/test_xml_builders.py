@@ -63,6 +63,7 @@ NS = {
 
 # ─── Fixtures ───────────────────────────────────────────────────
 
+
 @pytest.fixture
 def invoice_request() -> DocumentSubmitRequest:
     return DocumentSubmitRequest(
@@ -293,6 +294,7 @@ FAKE_CUFE = "a" * 96  # 96-char hex simulating SHA-384
 
 # ─── Helper ─────────────────────────────────────────────────────
 
+
 def _xpath(root: etree._Element, expr: str) -> list:
     """Run XPath with standard namespace map."""
     return root.xpath(expr, namespaces=NS)
@@ -363,6 +365,22 @@ class TestInvoiceBuilderStructure:
         root = build_invoice_xml(invoice_request, FAKE_CUFE)
         assert _xpath_text(root, "cbc:DueDate") == "2026-03-12"
 
+    def test_credit_separates_form_means_and_due_date(
+        self, invoice_request: DocumentSubmitRequest
+    ) -> None:
+        payload = invoice_request.model_dump()
+        payload.update(
+            payment_method=None,
+            payment_form="CREDITO",
+            payment_means="DEBIT_CARD",
+            due_date="2026-04-12",
+        )
+        root = build_invoice_xml(DocumentSubmitRequest.model_validate(payload), FAKE_CUFE)
+        assert _xpath_text(root, "cbc:DueDate") == "2026-04-12"
+        assert _xpath_text(root, "cac:PaymentMeans/cbc:ID") == "2"
+        assert _xpath_text(root, "cac:PaymentMeans/cbc:PaymentMeansCode") == "49"
+        assert _xpath_text(root, "cac:PaymentMeans/cbc:PaymentDueDate") == "2026-04-12"
+
     def test_invoice_type_code_factura(self, invoice_request: DocumentSubmitRequest) -> None:
         root = build_invoice_xml(invoice_request, FAKE_CUFE)
         assert _xpath_text(root, "cbc:InvoiceTypeCode") == "01"
@@ -427,28 +445,34 @@ class TestInvoiceBuilderParties:
         supplier = "cac:AccountingSupplierParty"
 
         assert _xpath_text(root, f"{supplier}/cbc:AdditionalAccountID") == "2"
-        assert (
-            _xpath_text(root, f"{supplier}/cac:Party/cbc:IndustryClassificationCode")
-            == "4752"
-        )
+        assert _xpath_text(root, f"{supplier}/cac:Party/cbc:IndustryClassificationCode") == "4752"
         assert _xpath_text(root, f"{supplier}/cac:Party/cac:PartyName/cbc:Name") == (
             "PEREZ GOMEZ ANA LUCIA"
         )
-        assert _xpath_text(root, f"{supplier}/cac:Party/cac:PhysicalLocation/cac:Address/cbc:ID") == (
-            "68276"
+        assert _xpath_text(
+            root, f"{supplier}/cac:Party/cac:PhysicalLocation/cac:Address/cbc:ID"
+        ) == ("68276")
+        assert (
+            _xpath_text(
+                root,
+                f"{supplier}/cac:Party/cac:PhysicalLocation/cac:Address/cac:AddressLine/cbc:Line",
+            )
+            == "CL 100 # 15-20 BRR EJEMPLO"
         )
-        assert _xpath_text(
-            root,
-            f"{supplier}/cac:Party/cac:PhysicalLocation/cac:Address/cac:AddressLine/cbc:Line",
-        ) == "CL 100 # 15-20 BRR EJEMPLO"
-        assert _xpath_text(
-            root,
-            f"{supplier}/cac:Party/cac:PartyTaxScheme/cbc:TaxLevelCode",
-        ) == "R-99-PN"
-        assert _xpath_text(
-            root,
-            f"{supplier}/cac:Party/cac:PartyTaxScheme/cbc:CompanyID",
-        ) == "12345678"
+        assert (
+            _xpath_text(
+                root,
+                f"{supplier}/cac:Party/cac:PartyTaxScheme/cbc:TaxLevelCode",
+            )
+            == "R-99-PN"
+        )
+        assert (
+            _xpath_text(
+                root,
+                f"{supplier}/cac:Party/cac:PartyTaxScheme/cbc:CompanyID",
+            )
+            == "12345678"
+        )
         assert _xpath_text(root, f"{supplier}/cac:Party/cac:Contact/cbc:Telephone") == (
             "3001234567"
         )
@@ -487,10 +511,13 @@ class TestInvoiceBuilderParties:
         root = build_invoice_xml(legacy_request, FAKE_CUFE)
         supplier = "cac:AccountingSupplierParty/cac:Party"
         assert _xpath_text(root, f"{supplier}/cac:PartyName/cbc:Name") == settings.company.name
-        assert _xpath_text(
-            root,
-            f"{supplier}/cac:PhysicalLocation/cac:Address/cac:AddressLine/cbc:Line",
-        ) == settings.company.address
+        assert (
+            _xpath_text(
+                root,
+                f"{supplier}/cac:PhysicalLocation/cac:Address/cac:AddressLine/cbc:Line",
+            )
+            == settings.company.address
+        )
         assert _xpath(root, f"{supplier}/cbc:IndustryClassificationCode") == []
 
     def test_customer_party_exists(self, invoice_request: DocumentSubmitRequest) -> None:
@@ -511,8 +538,7 @@ class TestInvoiceBuilderParties:
     def test_customer_email_in_contact(self, invoice_request: DocumentSubmitRequest) -> None:
         root = build_invoice_xml(invoice_request, FAKE_CUFE)
         email = _xpath_text(
-            root,
-            "cac:AccountingCustomerParty/cac:Party/cac:Contact/cbc:ElectronicMail"
+            root, "cac:AccountingCustomerParty/cac:Party/cac:Contact/cbc:ElectronicMail"
         )
         assert email == "compras@ejemplo.com"
 
@@ -552,23 +578,30 @@ class TestInvoiceBuilderParties:
         self, invoice_request: DocumentSubmitRequest
     ) -> None:
         root = build_invoice_xml(invoice_request, FAKE_CUFE)
-        assert _xpath_text(
-            root,
-            "cac:AccountingCustomerParty/cac:Party/cac:PhysicalLocation/cac:Address/cbc:CityName",
-        ) == "Bogota"
-        assert _xpath_text(
-            root,
-            "cac:AccountingCustomerParty/cac:Party/cac:PhysicalLocation/cac:Address/cac:AddressLine/cbc:Line",
-        ) == "Calle 10 # 5-11"
+        assert (
+            _xpath_text(
+                root,
+                "cac:AccountingCustomerParty/cac:Party/cac:PhysicalLocation/cac:Address/cbc:CityName",
+            )
+            == "Bogota"
+        )
+        assert (
+            _xpath_text(
+                root,
+                "cac:AccountingCustomerParty/cac:Party/cac:PhysicalLocation/cac:Address/cac:AddressLine/cbc:Line",
+            )
+            == "Calle 10 # 5-11"
+        )
 
-    def test_customer_contact_includes_phone(
-        self, invoice_request: DocumentSubmitRequest
-    ) -> None:
+    def test_customer_contact_includes_phone(self, invoice_request: DocumentSubmitRequest) -> None:
         root = build_invoice_xml(invoice_request, FAKE_CUFE)
-        assert _xpath_text(
-            root,
-            "cac:AccountingCustomerParty/cac:Party/cac:Contact/cbc:Telephone",
-        ) == "3001234567"
+        assert (
+            _xpath_text(
+                root,
+                "cac:AccountingCustomerParty/cac:Party/cac:Contact/cbc:Telephone",
+            )
+            == "3001234567"
+        )
 
 
 class TestInvoiceBuilderResolution:
@@ -578,36 +611,54 @@ class TestInvoiceBuilderResolution:
         self, invoice_request: DocumentSubmitRequest
     ) -> None:
         root = build_invoice_xml(invoice_request, FAKE_CUFE)
-        assert _xpath_text(
-            root,
-            "ext:UBLExtensions/ext:UBLExtension[1]/ext:ExtensionContent/"
-            "sts:DianExtensions/sts:InvoiceControl/sts:InvoiceAuthorization",
-        ) == "18764000001"
-        assert _xpath_text(
-            root,
-            "ext:UBLExtensions/ext:UBLExtension[1]/ext:ExtensionContent/"
-            "sts:DianExtensions/sts:InvoiceControl/sts:AuthorizedInvoices/sts:Prefix",
-        ) == "SETT"
-        assert _xpath_text(
-            root,
-            "ext:UBLExtensions/ext:UBLExtension[1]/ext:ExtensionContent/"
-            "sts:DianExtensions/sts:InvoiceControl/sts:AuthorizedInvoices/sts:From",
-        ) == "120"
-        assert _xpath_text(
-            root,
-            "ext:UBLExtensions/ext:UBLExtension[1]/ext:ExtensionContent/"
-            "sts:DianExtensions/sts:InvoiceControl/sts:AuthorizedInvoices/sts:To",
-        ) == "240"
-        assert _xpath_text(
-            root,
-            "ext:UBLExtensions/ext:UBLExtension[1]/ext:ExtensionContent/"
-            "sts:DianExtensions/sts:InvoiceControl/sts:AuthorizationPeriod/cbc:StartDate",
-        ) == "2026-01-01"
-        assert _xpath_text(
-            root,
-            "ext:UBLExtensions/ext:UBLExtension[1]/ext:ExtensionContent/"
-            "sts:DianExtensions/sts:InvoiceControl/sts:AuthorizationPeriod/cbc:EndDate",
-        ) == "2026-12-31"
+        assert (
+            _xpath_text(
+                root,
+                "ext:UBLExtensions/ext:UBLExtension[1]/ext:ExtensionContent/"
+                "sts:DianExtensions/sts:InvoiceControl/sts:InvoiceAuthorization",
+            )
+            == "18764000001"
+        )
+        assert (
+            _xpath_text(
+                root,
+                "ext:UBLExtensions/ext:UBLExtension[1]/ext:ExtensionContent/"
+                "sts:DianExtensions/sts:InvoiceControl/sts:AuthorizedInvoices/sts:Prefix",
+            )
+            == "SETT"
+        )
+        assert (
+            _xpath_text(
+                root,
+                "ext:UBLExtensions/ext:UBLExtension[1]/ext:ExtensionContent/"
+                "sts:DianExtensions/sts:InvoiceControl/sts:AuthorizedInvoices/sts:From",
+            )
+            == "120"
+        )
+        assert (
+            _xpath_text(
+                root,
+                "ext:UBLExtensions/ext:UBLExtension[1]/ext:ExtensionContent/"
+                "sts:DianExtensions/sts:InvoiceControl/sts:AuthorizedInvoices/sts:To",
+            )
+            == "240"
+        )
+        assert (
+            _xpath_text(
+                root,
+                "ext:UBLExtensions/ext:UBLExtension[1]/ext:ExtensionContent/"
+                "sts:DianExtensions/sts:InvoiceControl/sts:AuthorizationPeriod/cbc:StartDate",
+            )
+            == "2026-01-01"
+        )
+        assert (
+            _xpath_text(
+                root,
+                "ext:UBLExtensions/ext:UBLExtension[1]/ext:ExtensionContent/"
+                "sts:DianExtensions/sts:InvoiceControl/sts:AuthorizationPeriod/cbc:EndDate",
+            )
+            == "2026-12-31"
+        )
 
 
 class TestInvoiceBuilderTaxes:
@@ -630,9 +681,7 @@ class TestInvoiceBuilderTaxes:
 
     def test_tax_subtotal_percent(self, invoice_request: DocumentSubmitRequest) -> None:
         root = build_invoice_xml(invoice_request, FAKE_CUFE)
-        percent = _xpath_text(
-            root, "cac:TaxTotal/cac:TaxSubtotal/cac:TaxCategory/cbc:Percent"
-        )
+        percent = _xpath_text(root, "cac:TaxTotal/cac:TaxSubtotal/cac:TaxCategory/cbc:Percent")
         assert percent == "19.00"
 
     def test_legal_monetary_total(self, invoice_request: DocumentSubmitRequest) -> None:
@@ -809,9 +858,17 @@ class TestInvoiceBuilderLines:
 
     def test_line_item_identification(self, invoice_request: DocumentSubmitRequest) -> None:
         root = build_invoice_xml(invoice_request, FAKE_CUFE)
-        assert _xpath_text(root, "cac:InvoiceLine[1]/cac:Item/cbc:Name") == "Tornillo hexagonal 1/4 x 1 zinc"
-        assert _xpath_text(root, "cac:InvoiceLine[1]/cac:Item/cac:SellersItemIdentification/cbc:ID") == "SKU-0001"
-        standard = _xpath(root, "cac:InvoiceLine[1]/cac:Item/cac:StandardItemIdentification/cbc:ID")[0]
+        assert (
+            _xpath_text(root, "cac:InvoiceLine[1]/cac:Item/cbc:Name")
+            == "Tornillo hexagonal 1/4 x 1 zinc"
+        )
+        assert (
+            _xpath_text(root, "cac:InvoiceLine[1]/cac:Item/cac:SellersItemIdentification/cbc:ID")
+            == "SKU-0001"
+        )
+        standard = _xpath(
+            root, "cac:InvoiceLine[1]/cac:Item/cac:StandardItemIdentification/cbc:ID"
+        )[0]
         assert standard.text == "SKU-0001"
         assert standard.get("schemeID") == "999"
 
@@ -884,9 +941,7 @@ class TestPosDocBuilder:
         """POS without customer NIT should use consumidor final NIT."""
         root = build_invoice_xml(pos_request, FAKE_CUFE)
         company_id = _xpath_text(
-            root,
-            "cac:AccountingCustomerParty/cac:Party"
-            "/cac:PartyTaxScheme/cbc:CompanyID"
+            root, "cac:AccountingCustomerParty/cac:Party/cac:PartyTaxScheme/cbc:CompanyID"
         )
         assert company_id == "222222222222"
 
@@ -895,7 +950,9 @@ class TestPosDocBuilder:
         account_id = _xpath_text(root, "cac:AccountingCustomerParty/cbc:AdditionalAccountID")
         assert account_id == "2"  # 2 = Persona Natural
 
-    def test_consumidor_final_has_party_identification(self, pos_request: DocumentSubmitRequest) -> None:
+    def test_consumidor_final_has_party_identification(
+        self, pos_request: DocumentSubmitRequest
+    ) -> None:
         root = build_invoice_xml(pos_request, FAKE_CUFE)
         identifier = _xpath(
             root,
@@ -1013,14 +1070,20 @@ class TestPosDocBuilder:
         self, identified_pos_request: DocumentSubmitRequest
     ) -> None:
         root = build_invoice_xml(identified_pos_request, FAKE_CUFE)
-        assert _xpath_text(
-            root,
-            "cac:AccountingCustomerParty/cac:Party/cac:PhysicalLocation/cac:Address/cbc:CityName",
-        ) == "Medellin"
-        assert _xpath_text(
-            root,
-            "cac:AccountingCustomerParty/cac:Party/cac:Contact/cbc:ElectronicMail",
-        ) == "cliente.pos@example.com"
+        assert (
+            _xpath_text(
+                root,
+                "cac:AccountingCustomerParty/cac:Party/cac:PhysicalLocation/cac:Address/cbc:CityName",
+            )
+            == "Medellin"
+        )
+        assert (
+            _xpath_text(
+                root,
+                "cac:AccountingCustomerParty/cac:Party/cac:Contact/cbc:ElectronicMail",
+            )
+            == "cliente.pos@example.com"
+        )
 
 
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -1035,7 +1098,9 @@ class TestCreditNoteBuilderStructure:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
         assert root.tag == f"{{{NS_CREDIT_NOTE}}}CreditNote"
 
-    def test_root_has_credit_note_namespace(self, credit_note_request: DocumentSubmitRequest) -> None:
+    def test_root_has_credit_note_namespace(
+        self, credit_note_request: DocumentSubmitRequest
+    ) -> None:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
         assert root.nsmap[None] == NS_CREDIT_NOTE
 
@@ -1065,7 +1130,10 @@ class TestCreditNoteBuilderStructure:
         self, credit_note_request: DocumentSubmitRequest
     ) -> None:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
-        assert _xpath_text(root, "cbc:ProfileID") == "DIAN 2.1: Nota Crédito de Factura Electrónica de Venta"
+        assert (
+            _xpath_text(root, "cbc:ProfileID")
+            == "DIAN 2.1: Nota Crédito de Factura Electrónica de Venta"
+        )
 
     def test_customization_id_matches_referenced_credit_note(
         self, credit_note_request: DocumentSubmitRequest
@@ -1077,103 +1145,83 @@ class TestCreditNoteBuilderStructure:
         self, credit_note_request: DocumentSubmitRequest
     ) -> None:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
-        assert _xpath_text(
-            root,
-            "ext:UBLExtensions/ext:UBLExtension[1]/ext:ExtensionContent/"
-            "sts:DianExtensions/sts:InvoiceControl/sts:AuthorizedInvoices/sts:From",
-        ) == "30"
-        assert _xpath_text(
-            root,
-            "ext:UBLExtensions/ext:UBLExtension[1]/ext:ExtensionContent/"
-            "sts:DianExtensions/sts:InvoiceControl/sts:AuthorizationPeriod/cbc:StartDate",
-        ) == "2026-02-01"
+        assert (
+            _xpath_text(
+                root,
+                "ext:UBLExtensions/ext:UBLExtension[1]/ext:ExtensionContent/"
+                "sts:DianExtensions/sts:InvoiceControl/sts:AuthorizedInvoices/sts:From",
+            )
+            == "30"
+        )
+        assert (
+            _xpath_text(
+                root,
+                "ext:UBLExtensions/ext:UBLExtension[1]/ext:ExtensionContent/"
+                "sts:DianExtensions/sts:InvoiceControl/sts:AuthorizationPeriod/cbc:StartDate",
+            )
+            == "2026-02-01"
+        )
 
 
 class TestCreditNoteDiscrepancy:
     """Test DiscrepancyResponse and BillingReference elements."""
 
-    def test_discrepancy_response_exists(
-        self, credit_note_request: DocumentSubmitRequest
-    ) -> None:
+    def test_discrepancy_response_exists(self, credit_note_request: DocumentSubmitRequest) -> None:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
         discrepancy = _xpath(root, "cac:DiscrepancyResponse")
         assert len(discrepancy) == 1
 
-    def test_discrepancy_reference_id(
-        self, credit_note_request: DocumentSubmitRequest
-    ) -> None:
+    def test_discrepancy_reference_id(self, credit_note_request: DocumentSubmitRequest) -> None:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
         ref_id = _xpath_text(root, "cac:DiscrepancyResponse/cbc:ReferenceID")
         assert ref_id == "SETT000001"
 
-    def test_discrepancy_response_code(
-        self, credit_note_request: DocumentSubmitRequest
-    ) -> None:
+    def test_discrepancy_response_code(self, credit_note_request: DocumentSubmitRequest) -> None:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
         code = _xpath_text(root, "cac:DiscrepancyResponse/cbc:ResponseCode")
         assert code == "1"  # Devolución parcial (anulación "2" is forbidden for tipo 22)
 
-    def test_discrepancy_description(
-        self, credit_note_request: DocumentSubmitRequest
-    ) -> None:
+    def test_discrepancy_description(self, credit_note_request: DocumentSubmitRequest) -> None:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
         desc = _xpath_text(root, "cac:DiscrepancyResponse/cbc:Description")
         assert desc == "Devolución parcial de mercancía"
 
-    def test_billing_reference_exists(
-        self, credit_note_request: DocumentSubmitRequest
-    ) -> None:
+    def test_billing_reference_exists(self, credit_note_request: DocumentSubmitRequest) -> None:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
         billing_ref = _xpath(root, "cac:BillingReference")
         assert len(billing_ref) == 1
 
-    def test_billing_reference_invoice_id(
-        self, credit_note_request: DocumentSubmitRequest
-    ) -> None:
+    def test_billing_reference_invoice_id(self, credit_note_request: DocumentSubmitRequest) -> None:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
-        ref_id = _xpath_text(
-            root, "cac:BillingReference/cac:InvoiceDocumentReference/cbc:ID"
-        )
+        ref_id = _xpath_text(root, "cac:BillingReference/cac:InvoiceDocumentReference/cbc:ID")
         assert ref_id == "SETT000001"
 
-    def test_billing_reference_cufe(
-        self, credit_note_request: DocumentSubmitRequest
-    ) -> None:
+    def test_billing_reference_cufe(self, credit_note_request: DocumentSubmitRequest) -> None:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
-        cufe = _xpath_text(
-            root, "cac:BillingReference/cac:InvoiceDocumentReference/cbc:UUID"
-        )
+        cufe = _xpath_text(root, "cac:BillingReference/cac:InvoiceDocumentReference/cbc:UUID")
         assert cufe == "abc123def456"
 
 
 class TestCreditNoteLines:
     """Test CreditNoteLine elements."""
 
-    def test_uses_credit_note_line_tag(
-        self, credit_note_request: DocumentSubmitRequest
-    ) -> None:
+    def test_uses_credit_note_line_tag(self, credit_note_request: DocumentSubmitRequest) -> None:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
         lines = _xpath(root, "cac:CreditNoteLine")
         assert len(lines) == 1
 
-    def test_no_invoice_lines(
-        self, credit_note_request: DocumentSubmitRequest
-    ) -> None:
+    def test_no_invoice_lines(self, credit_note_request: DocumentSubmitRequest) -> None:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
         lines = _xpath(root, "cac:InvoiceLine")
         assert len(lines) == 0
 
-    def test_credited_quantity_tag(
-        self, credit_note_request: DocumentSubmitRequest
-    ) -> None:
+    def test_credited_quantity_tag(self, credit_note_request: DocumentSubmitRequest) -> None:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
         qty = _xpath(root, "cac:CreditNoteLine/cbc:CreditedQuantity")
         assert len(qty) == 1
         assert qty[0].text == "100.0"  # quantity is float
 
-    def test_credit_note_monetary_total(
-        self, credit_note_request: DocumentSubmitRequest
-    ) -> None:
+    def test_credit_note_monetary_total(self, credit_note_request: DocumentSubmitRequest) -> None:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
         assert _xpath_text(root, "cac:LegalMonetaryTotal/cbc:PayableAmount") == "59500.00"
 
@@ -1181,39 +1229,35 @@ class TestCreditNoteLines:
 class TestDebitNoteBuilder:
     """Test DebitNote XML structure."""
 
-    def test_root_element_is_debit_note(
-        self, debit_note_request: DocumentSubmitRequest
-    ) -> None:
+    def test_root_element_is_debit_note(self, debit_note_request: DocumentSubmitRequest) -> None:
         root = build_debit_note_xml(debit_note_request, FAKE_CUFE)
         assert root.tag == f"{{{NS_DEBIT_NOTE}}}DebitNote"
 
-    def test_profile_id_matches_dian(
-        self, debit_note_request: DocumentSubmitRequest
-    ) -> None:
+    def test_profile_id_matches_dian(self, debit_note_request: DocumentSubmitRequest) -> None:
         root = build_debit_note_xml(debit_note_request, FAKE_CUFE)
-        assert _xpath_text(root, "cbc:ProfileID") == "DIAN 2.1: Nota Débito de Factura Electrónica de Venta"
+        assert (
+            _xpath_text(root, "cbc:ProfileID")
+            == "DIAN 2.1: Nota Débito de Factura Electrónica de Venta"
+        )
 
-    def test_uses_requested_monetary_total(
-        self, debit_note_request: DocumentSubmitRequest
-    ) -> None:
+    def test_uses_requested_monetary_total(self, debit_note_request: DocumentSubmitRequest) -> None:
         root = build_debit_note_xml(debit_note_request, FAKE_CUFE)
         assert _xpath_text(root, "cac:RequestedMonetaryTotal/cbc:PayableAmount") == "11900.00"
 
-    def test_uses_debit_note_line(
-        self, debit_note_request: DocumentSubmitRequest
-    ) -> None:
+    def test_uses_debit_note_line(self, debit_note_request: DocumentSubmitRequest) -> None:
         root = build_debit_note_xml(debit_note_request, FAKE_CUFE)
         assert len(_xpath(root, "cac:DebitNoteLine")) == 1
         assert _xpath_text(root, "cac:DebitNoteLine/cbc:DebitedQuantity") == "1.0"
 
-    def test_billing_reference_cufe(
-        self, debit_note_request: DocumentSubmitRequest
-    ) -> None:
+    def test_billing_reference_cufe(self, debit_note_request: DocumentSubmitRequest) -> None:
         root = build_debit_note_xml(debit_note_request, FAKE_CUFE)
-        assert _xpath_text(
-            root,
-            "cac:BillingReference/cac:InvoiceDocumentReference/cbc:UUID",
-        ) == "abc123def456"
+        assert (
+            _xpath_text(
+                root,
+                "cac:BillingReference/cac:InvoiceDocumentReference/cbc:UUID",
+            )
+            == "abc123def456"
+        )
 
 
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -1232,8 +1276,7 @@ class TestUBLExtensions:
     def test_dian_extensions_element(self, invoice_request: DocumentSubmitRequest) -> None:
         root = build_invoice_xml(invoice_request, FAKE_CUFE)
         dian_ext = _xpath(
-            root,
-            "ext:UBLExtensions/ext:UBLExtension[1]/ext:ExtensionContent/sts:DianExtensions"
+            root, "ext:UBLExtensions/ext:UBLExtension[1]/ext:ExtensionContent/sts:DianExtensions"
         )
         assert len(dian_ext) == 1
 
@@ -1242,7 +1285,7 @@ class TestUBLExtensions:
         sp = _xpath(
             root,
             "ext:UBLExtensions/ext:UBLExtension[1]/ext:ExtensionContent"
-            "/sts:DianExtensions/sts:SoftwareProvider"
+            "/sts:DianExtensions/sts:SoftwareProvider",
         )
         assert len(sp) == 1
 
@@ -1251,7 +1294,7 @@ class TestUBLExtensions:
         ssc = _xpath(
             root,
             "ext:UBLExtensions/ext:UBLExtension[1]/ext:ExtensionContent"
-            "/sts:DianExtensions/sts:SoftwareSecurityCode"
+            "/sts:DianExtensions/sts:SoftwareSecurityCode",
         )
         assert len(ssc) == 1
         # SSC should be a non-empty SHA-384 hex
@@ -1259,15 +1302,14 @@ class TestUBLExtensions:
 
     def test_signature_placeholder_empty(self, invoice_request: DocumentSubmitRequest) -> None:
         root = build_invoice_xml(invoice_request, FAKE_CUFE)
-        ext2_content = _xpath(
-            root,
-            "ext:UBLExtensions/ext:UBLExtension[2]/ext:ExtensionContent"
-        )
+        ext2_content = _xpath(root, "ext:UBLExtensions/ext:UBLExtension[2]/ext:ExtensionContent")
         assert len(ext2_content) == 1
         # Should be empty (placeholder for XAdES signature)
         assert len(ext2_content[0]) == 0
 
-    def test_pos_includes_software_manufacturer_extension(self, pos_request: DocumentSubmitRequest) -> None:
+    def test_pos_includes_software_manufacturer_extension(
+        self, pos_request: DocumentSubmitRequest
+    ) -> None:
         root = build_invoice_xml(pos_request, FAKE_CUFE)
         extensions = _xpath(root, "ext:UBLExtensions/ext:UBLExtension")
         assert len(extensions) == 5
@@ -1282,7 +1324,9 @@ class TestUBLExtensions:
         ]
         assert manufacturer_names == ["NombreApellido", "RazonSocial", "NombreSoftware"]
 
-    def test_pos_includes_buyer_benefits_extension(self, pos_request: DocumentSubmitRequest) -> None:
+    def test_pos_includes_buyer_benefits_extension(
+        self, pos_request: DocumentSubmitRequest
+    ) -> None:
         root = build_invoice_xml(pos_request, FAKE_CUFE)
         benefit_names = [
             node.text
@@ -1313,7 +1357,9 @@ class TestUBLExtensions:
             "SubTotal",
         ]
 
-    def test_pos_signature_placeholder_is_last_extension(self, pos_request: DocumentSubmitRequest) -> None:
+    def test_pos_signature_placeholder_is_last_extension(
+        self, pos_request: DocumentSubmitRequest
+    ) -> None:
         root = build_invoice_xml(pos_request, FAKE_CUFE)
         signature_placeholder = _xpath(
             root,
@@ -1447,7 +1493,9 @@ class TestApplicationResponseBuilder:
         root = self._build()
         extensions = root.findall(f"{ext('UBLExtensions')}/{ext('UBLExtension')}")
         assert len(extensions) == 2
-        assert extensions[0].find(f"{ext('ExtensionContent')}/{{{NS_STS}}}DianExtensions") is not None
+        assert (
+            extensions[0].find(f"{ext('ExtensionContent')}/{{{NS_STS}}}DianExtensions") is not None
+        )
         assert len(extensions[1].find(ext("ExtensionContent"))) == 0
 
     def test_dian_extensions_have_no_invoice_control(self) -> None:

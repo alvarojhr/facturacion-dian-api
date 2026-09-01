@@ -90,7 +90,8 @@ def build_invoice_xml(
 
     _sub(root, cbc("IssueDate"), req.issue_date)
     _sub(root, cbc("IssueTime"), req.issue_time)
-    _sub(root, cbc("DueDate"), req.issue_date)
+    due_date = req.due_date or req.issue_date
+    _sub(root, cbc("DueDate"), due_date)
     _sub(
         root,
         cbc("InvoiceTypeCode"),
@@ -109,7 +110,8 @@ def build_invoice_xml(
 
     build_supplier_party(root, req.prefix, req)
     build_customer_party(root, req)
-    build_payment_means(root, req.payment_method, req.issue_date)
+    assert req.payment_means is not None
+    build_payment_means(root, req.payment_form, req.payment_means, due_date)
     build_tax_totals(root, req.lines)
     build_legal_monetary_total(root, req.lines, req.total)
 
@@ -127,4 +129,3 @@ def invoice_to_xml_string(root: etree._Element) -> bytes:
         encoding="UTF-8",
         pretty_print=True,
     )
-

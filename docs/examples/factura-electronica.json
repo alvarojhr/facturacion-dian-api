@@ -5,7 +5,8 @@
     "type": "FACTURA_ELECTRONICA",
     "issue_date": "2026-03-12",
     "issue_time": "14:30:00-05:00",
-    "payment_method": "CASH"
+    "payment_form": "CONTADO",
+    "payment_means": "CASH"
   },
   "issuer": {
     "nit": "900123456",
