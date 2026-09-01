@@ -63,14 +63,20 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: |
-            packages/core/pyproject.toml
-            packages/server/pyproject.toml
+            requirements.lock
 
       - name: Install packages
         if: steps.changes.outputs.docs_only != 'true'
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e ./packages/core -e "./packages/server[dev]"
+          python -m pip install --no-deps --require-hashes -r requirements.lock
+          python -m pip install --no-deps -e ./packages/core -e ./packages/server
+
+      - name: Install validation tooling
+        if: steps.changes.outputs.docs_only != 'true'
+        run: |
+          # El runtime ya quedó fijado por requirements.lock. Estas herramientas
+          # no forman parte de la imagen publicada ni re-resuelven el servicio.
+          python -m pip install "lxml-stubs>=0.5" "mypy>=1.13" "pytest>=8.0" "pytest-asyncio>=0.24" "ruff>=0.8.0"
 
       - name: Validate skill metadata
         if: steps.changes.outputs.docs_only != 'true'

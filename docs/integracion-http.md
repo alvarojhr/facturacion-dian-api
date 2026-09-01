@@ -203,6 +203,10 @@ Puntos a tener en cuenta:
 - `submission_options`: credenciales y parametros runtime DIAN.
 - `client_reference`: correlacion opaca del caller.
 
+Un despliegue representa un solo emisor. Define
+`COMPANY_ADDITIONAL_ACCOUNT_ID=1` para persona juridica o `2` para persona
+natural cuando la identidad no viaje completa en `issuer`.
+
 ## Campos clave de la respuesta
 
 - `submission_id`
