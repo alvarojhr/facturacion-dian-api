@@ -3,19 +3,18 @@
   "document": {
     "number": "NC000001",
     "type": "NOTA_CREDITO",
-    "issue_date": "2026-03-13",
+    "issue_date": "2026-09-15",
     "issue_time": "09:00:00-05:00",
-    "payment_form": "CONTADO",
-    "payment_means": "CASH"
+    "payment_method": "CASH"
   },
   "buyer": {
     "document_number": "800199436",
     "document_type": "NIT",
-    "name": "Empresa Ejemplo S.A.S."
-  },
-  "resolution": {
-    "number": "18764000001",
-    "prefix": "NC"
+    "name": "Empresa Ejemplo S.A.S.",
+    "additional_account_id": "1",
+    "tax_level_code": "R-99-PN",
+    "tax_scheme_id": "01",
+    "tax_scheme_name": "IVA"
   },
   "totals": {
     "subtotal": 50000,
@@ -25,6 +24,7 @@
   "line_items": [
     {
       "description": "Tornillo hexagonal 1/4 x 1 zinc",
+      "item_code": "TOR-001",
       "quantity": 100,
       "unit_price": 500,
       "line_total": 50000,
@@ -36,11 +36,13 @@
     "referenced_document_number": "FDK000001",
     "referenced_document_key": "ref-doc-key-demo",
     "referenced_issue_date": "2026-03-12",
-    "reason": "Devolucion parcial"
+    "reason": "Devolucion parcial",
+    "response_code": "1"
   },
   "submission_options": {
     "software_id": "software-demo-id",
     "software_pin": "pin-demo-001",
-    "test_set_id": "test-set-demo-001"
+    "test_set_id": "test-set-demo-001",
+    "file_sequence": 1
   }
 }

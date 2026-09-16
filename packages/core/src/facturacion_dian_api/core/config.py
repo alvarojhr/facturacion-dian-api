@@ -24,7 +24,7 @@ class CompanySettings(BaseSettings):
 
     name: str = "Example Issuer SAS"
     nit: str = "900123456"
-    dv: str = "7"
+    dv: str = "8"
     # DIAN AdditionalAccountID del emisor: "1" = persona jurídica, "2" =
     # persona natural. Default "1" por coherencia con el emisor de ejemplo
     # ("Example Issuer SAS", una SAS); un emisor persona natural lo fija a
@@ -38,7 +38,9 @@ class CompanySettings(BaseSettings):
     country_code: str = "CO"
     phone: str = "3001234567"
     email: str = "billing@example-issuer.test"
-    tax_scheme: str = "ZZ"
+    tax_level_code: str = "R-99-PN"
+    tax_scheme_id: str = "01"
+    tax_scheme_name: str = "IVA"
     economic_activity: str = "4752"
 
 
@@ -57,6 +59,7 @@ class DianSettings(BaseSettings):
     lookup_wsdl_url: str = ""
     cert_path: str = "./certificates/cert.p12"
     cert_password: str = ""
+    cert_expiry_warning_days: int = Field(default=30, ge=1)
     software_id: str = ""
     software_pin: str = ""
     software_name: str = "Facturacion DIAN Kit"

@@ -11,6 +11,7 @@ from facturacion_dian_api.core.runtime_config import (
 )
 from facturacion_dian_api.core.xml.common import (
     _sub,
+    build_allowance_charges,
     build_customer_party,
     build_invoice_control,
     build_invoice_line,
@@ -24,6 +25,7 @@ from facturacion_dian_api.core.xml.common import (
 from facturacion_dian_api.core.xml.namespaces import (
     CURRENCY_COP,
     CUSTOMIZATION_DEBIT_NOTE,
+    CUSTOMIZATION_DEBIT_NOTE_PERIOD,
     NS_DEBIT_NOTE,
     NSMAP_DEBIT_NOTE,
     cac,
@@ -34,6 +36,7 @@ from lxml import etree
 DEFAULT_DEBIT_NOTE_RESPONSE_CODE = "1"
 DEFAULT_DEBIT_NOTE_REASON = "Intereses"
 DEBIT_NOTE_PROFILE_ID = "DIAN 2.1: Nota Débito de Factura Electrónica de Venta"
+DEE_ADJUSTMENT_PROFILE_ID = "DIAN 2.1: Nota de Ajuste de Documento Equivalente Electrónico"
 
 
 def build_debit_note_xml(
@@ -43,6 +46,7 @@ def build_debit_note_xml(
 ) -> etree._Element:
     """Build a complete UBL 2.1 DebitNote XML for DIAN."""
     debit_note_number = req.debit_note_number or req.invoice_number
+    is_dee_adjustment = req.document_type == "NOTA_AJUSTE_DEE_DEBITO"
     response_code = req.debit_note_response_code or DEFAULT_DEBIT_NOTE_RESPONSE_CODE
     reason = req.debit_note_reason or DEFAULT_DEBIT_NOTE_REASON
     referenced_issue_date = req.referenced_invoice_issue_date or req.issue_date
@@ -60,21 +64,31 @@ def build_debit_note_xml(
         req,
         software_security_code,
         qr_code,
+        include_invoice_control=bool(req.resolution_number),
     )
-    range_from, range_to, valid_from, valid_to = resolve_invoice_control(req)
-    build_invoice_control(
-        invoice_control,
-        req.resolution_number,
-        req.prefix,
-        range_from,
-        range_to,
-        valid_from,
-        valid_to,
-    )
+    if invoice_control is not None:
+        range_from, range_to, valid_from, valid_to = resolve_invoice_control(req)
+        build_invoice_control(
+            invoice_control,
+            req.resolution_number,
+            req.prefix,
+            range_from,
+            range_to,
+            valid_from,
+            valid_to,
+        )
 
     _sub(root, cbc("UBLVersionID"), "UBL 2.1")
-    _sub(root, cbc("CustomizationID"), CUSTOMIZATION_DEBIT_NOTE)
-    _sub(root, cbc("ProfileID"), DEBIT_NOTE_PROFILE_ID)
+    has_reference = bool(req.referenced_invoice_number)
+    customization_id = (
+        "10"
+        if is_dee_adjustment
+        else CUSTOMIZATION_DEBIT_NOTE
+        if has_reference
+        else CUSTOMIZATION_DEBIT_NOTE_PERIOD
+    )
+    _sub(root, cbc("CustomizationID"), customization_id)
+    _sub(root, cbc("ProfileID"), DEE_ADJUSTMENT_PROFILE_ID if is_dee_adjustment else DEBIT_NOTE_PROFILE_ID)
     _sub(root, cbc("ProfileExecutionID"), resolved_tipo_ambiente(req))
     _sub(root, cbc("ID"), debit_note_number)
     _sub(
@@ -97,23 +111,36 @@ def build_debit_note_xml(
     )
     _sub(root, cbc("LineCountNumeric"), str(len(req.lines)))
 
+    if not has_reference:
+        if not req.billing_period_start or not req.billing_period_end:
+            raise ValueError("A non-associated debit note requires an explicit billing period")
+        period = _sub(root, cac("InvoicePeriod"))
+        _sub(period, cbc("StartDate"), req.billing_period_start)
+        _sub(period, cbc("EndDate"), req.billing_period_end)
+
     discrepancy = _sub(root, cac("DiscrepancyResponse"))
     _sub(discrepancy, cbc("ReferenceID"), req.referenced_invoice_number or "")
     _sub(discrepancy, cbc("ResponseCode"), response_code)
     _sub(discrepancy, cbc("Description"), reason)
 
-    billing_ref = _sub(root, cac("BillingReference"))
-    invoice_ref = _sub(billing_ref, cac("InvoiceDocumentReference"))
-    _sub(invoice_ref, cbc("ID"), req.referenced_invoice_number or "")
-    _sub(invoice_ref, cbc("UUID"), req.referenced_invoice_cufe or "", schemeName="CUFE-SHA384")
-    _sub(invoice_ref, cbc("IssueDate"), referenced_issue_date)
+    if has_reference:
+        billing_ref = _sub(root, cac("BillingReference"))
+        invoice_ref = _sub(billing_ref, cac("InvoiceDocumentReference"))
+        _sub(invoice_ref, cbc("ID"), req.referenced_invoice_number or "")
+        _sub(
+            invoice_ref,
+            cbc("UUID"),
+            req.referenced_invoice_cufe or "",
+            schemeName="CUDE-SHA384" if is_dee_adjustment else "CUFE-SHA384",
+        )
+        _sub(invoice_ref, cbc("IssueDate"), referenced_issue_date)
 
     build_supplier_party(root, req.prefix, req)
     build_customer_party(root, req)
-    assert req.payment_means is not None
-    build_payment_means(root, req.payment_form, req.payment_means, req.issue_date)
+    build_payment_means(root, req.resolved_payment_methods, req.payment_form, req.payment_due_date or req.issue_date)
+    build_allowance_charges(root, req.allowance_charges)
     build_tax_totals(root, req.lines)
-    build_requested_monetary_total(root, req.lines, req.total)
+    build_requested_monetary_total(root, req)
 
     for index, line in enumerate(req.lines, start=1):
         build_invoice_line(root, index, line, tag_name="DebitNoteLine")

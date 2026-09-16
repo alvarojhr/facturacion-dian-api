@@ -54,6 +54,10 @@ NSMAP_ATTACHED_DOCUMENT: dict[str | None, str] = {
     None: NS_ATTACHED_DOCUMENT,
     "cac": NS_CAC,
     "cbc": NS_CBC,
+    "ext": NS_EXT,
+    "ds": NS_DS,
+    "xades": NS_XADES,
+    "xades141": NS_XADES141,
 }
 
 NSMAP_APPLICATION_RESPONSE: dict[str | None, str] = {
@@ -110,7 +114,7 @@ INVOICE_TYPE_DOC_EQUIVALENTE_POS = "20"
 
 CREDIT_NOTE_TYPE = "91"
 
-CUSTOMIZATION_CREDIT_NOTE = "20"  # NC asociada (referencia FE conocida)
+CUSTOMIZATION_CREDIT_NOTE = "20"          # NC asociada (referencia FE conocida)
 CUSTOMIZATION_CREDIT_NOTE_NO_ASOCIADA = "22"  # NC no asociada (Res. 42/2020 Art. 30 §1)
 CUSTOMIZATION_DEBIT_NOTE = "30"
 CUSTOMIZATION_DEBIT_NOTE_PERIOD = "32"
@@ -118,11 +122,13 @@ CUSTOMIZATION_FACTURA = "10"
 CUSTOMIZATION_DOC_EQUIVALENTE = "10"
 
 PAYMENT_MEANS = {
-    "UNSPECIFIED": "1",
     "CASH": "10",
+    "CARD": "48",
     "CREDIT_CARD": "48",
     "DEBIT_CARD": "49",
     "TRANSFER": "31",
+    "CHECK": "20",
+    "CREDIT": "30",
 }
 
 DIAN_TAX_SCHEME_IVA = "01"
@@ -132,11 +138,34 @@ DIAN_TAX_SCHEME_ICA = "03"
 TAX_TYPE_TO_DIAN = {
     "IVA_19": {"code": "01", "name": "IVA", "percent": "19.00"},
     "IVA_5": {"code": "01", "name": "IVA", "percent": "5.00"},
+    "IVA_0": {"code": "01", "name": "IVA", "percent": "0.00"},
     "EXEMPT": {"code": "01", "name": "IVA", "percent": "0.00"},
     "EXCLUDED": {"code": "ZZ", "name": "No aplica", "percent": "0.00"},
+    "INC": {"code": "04", "name": "INC", "percent": None},
+    "ICA": {"code": "03", "name": "ICA", "percent": None},
+    "RETEIVA": {"code": "05", "name": "ReteIVA", "percent": None, "withholding": True},
+    "RETEFUENTE": {"code": "06", "name": "ReteFuente", "percent": None, "withholding": True},
+    "RETEICA": {"code": "07", "name": "ReteICA", "percent": None, "withholding": True},
+    "RETECREE": {"code": "08", "name": "ReteCREE", "percent": None, "withholding": True},
+    "IC_PORCENTUAL": {"code": "02", "name": "IC", "percent": None},
+    "FONDO_HORTIFRUTICOLA": {"code": "20", "name": "FtoHorticultura", "percent": None},
+    "TIMBRE": {"code": "21", "name": "Timbre", "percent": None},
+    "INC_BOLSAS": {"code": "22", "name": "Bolsas", "percent": None},
+    "IMPUESTO_CARBONO": {"code": "23", "name": "INCarbono", "percent": None},
+    "INC_COMBUSTIBLES": {"code": "24", "name": "INCombustibles", "percent": None},
+    "SOBRETASA_COMBUSTIBLES": {"code": "25", "name": "Sobretasa Combustibles", "percent": None},
+    "SORDICOM": {"code": "26", "name": "Sordicom", "percent": None},
+    "IC_DATOS": {"code": "30", "name": "IC Datos", "percent": None},
+    "ICL": {"code": "32", "name": "ICL", "percent": None},
+    "INPP": {"code": "33", "name": "INPP", "percent": None},
+    "IBUA": {"code": "34", "name": "IBUA", "percent": None},
+    "ICUI": {"code": "35", "name": "ICUI", "percent": None},
+    "AD_VALOREM": {"code": "36", "name": "ADV", "percent": None},
 }
 
-APPLICATION_RESPONSE_PROFILE_ID = "DIAN 2.1: ApplicationResponse de la Factura Electrónica de Venta"
+APPLICATION_RESPONSE_PROFILE_ID = (
+    "DIAN 2.1: ApplicationResponse de la Factura Electrónica de Venta"
+)
 # CustomizationID del ApplicationResponse de eventos del receptor: AAD02 exige
 # el literal "1" (a diferencia de la factura, donde codifica el tipo de operación).
 APPLICATION_RESPONSE_CUSTOMIZATION_ID = "1"

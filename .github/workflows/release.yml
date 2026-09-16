@@ -54,7 +54,9 @@ jobs:
       # Si no está configurado, el paso se salta con un aviso en vez de fallar el
       # release (la imagen ya quedó publicada); el deploy se lanza a mano.
       - name: Trigger ferreterias-invoicing deploy
-        if: ${{ env.RELEASE_PAT != '' }}
+        # La línea v2 requiere que el consumidor confirme su migración antes
+        # de reemplazar servicios que todavía reciben el contrato anterior.
+        if: ${{ env.RELEASE_PAT != '' && (startsWith(github.ref_name, 'v1.') || vars.DOWNSTREAM_HTTP_CONTRACT == '0.2.0a0') }}
         env:
           GH_TOKEN: ${{ env.RELEASE_PAT }}
         run: |
@@ -63,6 +65,10 @@ jobs:
           | gh api repos/alvarojhr/ferreterias-invoicing/dispatches \
               --method POST --input -
           echo "Dispatch enviado a ferreterias-invoicing con tag ${{ github.ref_name }}"
+
+      - name: Consumer migration required
+        if: ${{ !startsWith(github.ref_name, 'v1.') && vars.DOWNSTREAM_HTTP_CONTRACT != '0.2.0a0' }}
+        run: echo "Imagen publicada; despliegue automático del consumidor pendiente de migración al contrato HTTP 0.2.0a0."
 
       - name: Warn if deploy token missing
         if: ${{ env.RELEASE_PAT == '' }}

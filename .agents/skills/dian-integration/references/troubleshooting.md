@@ -6,7 +6,11 @@ Clasifica el problema primero:
 - `503`: configuracion local incompleta o certificado invalido.
 - `502`: falla upstream o de transporte con DIAN.
 - `504`: timeout DIAN.
-- `200` + `status=rejected`: rechazo funcional de DIAN.
+- `200` + `status=REJECTED`: rechazo funcional de DIAN.
+- `200` + `status=RECEIVED|PENDING`: DIAN recibio el ZIP, pero aun no emitio un
+  resultado definitivo; consulta por `tracking_id` y no generes otra firma.
+- `200` + `status=UNKNOWN|ERROR`: la respuesta no permite afirmar aceptacion;
+  conserva el artefacto y resuelve el estado antes de emitir otro documento.
 
 Checks rapidos:
 
@@ -26,6 +30,8 @@ Eventos RADIAN (`POST /api/v1/events`):
 - `Regla: AAH11`/`AAH12`/`AAH15` piden `receiver_person`;
 - un rechazo por orden de eventos indica que falta el `030` o el `032` previo:
   esa secuencia la controla el integrador, no la API.
+- ante timeout o transporte incierto, reintenta con `signed_xml_base64` y
+  `technical_filename` persistidos; no reconstruyas ni vuelvas a firmar.
 
 Guias completas:
 

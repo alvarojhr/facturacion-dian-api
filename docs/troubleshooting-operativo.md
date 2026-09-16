@@ -25,7 +25,7 @@ Checklist:
 - trata el evento como timeout upstream;
 - evita marcar el documento como rechazado de negocio;
 - repite consulta de estado si ya tenias `tracking_id`;
-- reintenta envio solo si el flujo de negocio lo permite.
+- si debes retransmitir, usa el XML firmado persistido, su mismo nombre y el mismo `file_sequence`.
 
 ## La respuesta sale `rejected`
 
@@ -37,19 +37,28 @@ Checklist:
 - valida numeracion y resolucion;
 - confirma subtotales, impuestos y total por linea.
 
-## No aparece XML en `artifacts`
+## Falta un XML en `artifacts`
 
 Checklist:
 
-- revisa si el caller envio `submission_options.return_xml_artifact=false`;
-- para status, valida si DIAN devolvio XML en la consulta;
-- confirma que el flujo aceptado persista los artifacts requeridos aguas abajo.
+- el XML firmado del emisor siempre se devuelve en preparación o envío;
+- el AR puede faltar mientras el envío asíncrono siga pendiente;
+- consulta el estado en el mismo ambiente hasta obtener el AR definitivo;
+- persiste cada artifact por separado y valida su restauración.
 
 ## AttachedDocument no sirve para interoperabilidad
 
 Checklist:
 
-- revisa `document_type_code`;
-- valida `reply_to_email` y `receiver_email`;
-- confirma que el XML base64 corresponde al documento firmado esperado;
-- revisa `cufe` y fecha de emision.
+- confirma que ambos XML estén firmados;
+- valida que el AR sea el resultado `02`, no una respuesta rechazada o pendiente;
+- confirma que número, tipo y CUFE/CUDE coincidan entre request, documento y AR;
+- usa la fecha y hora del documento firmado; la validación se deriva del AR.
+
+## Un documento histórico devuelve `422`
+
+Un XML nuevo no puede firmarse con fecha de emisión anterior. Recupera el artifact firmado que persististe y envíalo mediante `signed_xml_base64` y `signed_xml_filename`. Si no existe, reconcilia por CUFE/CUDE o tracking antes de decidir el tratamiento contable y fiscal.
+
+## El certificado rotó entre preparación y envío
+
+Completa los envíos preparados antes de retirar el certificado que los firmó. La API verifica los artifacts de reintento contra el certificado del despliegue; conservar la versión anterior durante la reconciliación evita reconstruir el documento.

@@ -36,6 +36,25 @@ def test_test_set_rejected_status_is_treated_as_rejected() -> None:
     assert response.is_rejected is True
 
 
+def test_technical_error_without_validation_is_not_a_fiscal_rejection() -> None:
+    response = DianResponse(
+        status_code="99",
+        status_message="SOAP error while processing the request",
+        error_messages=["Upstream operation failed"],
+    )
+
+    assert response.is_accepted is False
+    assert response.is_rejected is False
+    assert response.processing_status == "error"
+
+
+def test_processed_text_without_validation_is_unknown() -> None:
+    response = DianResponse(status_description="Procesado Correctamente")
+
+    assert response.is_accepted is False
+    assert response.processing_status == "unknown"
+
+
 def test_parse_get_acquirer_response() -> None:
     response_xml = b"""<?xml version="1.0" encoding="utf-8"?>
 <s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">

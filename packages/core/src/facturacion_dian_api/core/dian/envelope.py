@@ -264,7 +264,11 @@ def build_send_event_update_status_envelope(
 # ─── ZIP Helpers ─────────────────────────────────────────────
 
 
-def zip_and_encode(filename: str, xml_bytes: bytes) -> tuple[str, str]:
+def zip_and_encode(
+    filename: str,
+    xml_bytes: bytes,
+    zip_filename: str | None = None,
+) -> tuple[str, str]:
     """ZIP the signed XML and Base64-encode it.
 
     Args:
@@ -275,7 +279,7 @@ def zip_and_encode(filename: str, xml_bytes: bytes) -> tuple[str, str]:
         Tuple of (zip_filename, base64_content).
         zip_filename is the XML filename with .zip extension.
     """
-    zip_filename = filename.rsplit(".", 1)[0] + ".zip"
+    zip_filename = zip_filename or (filename.rsplit(".", 1)[0] + ".zip")
 
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:

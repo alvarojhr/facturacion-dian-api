@@ -48,6 +48,10 @@ from cryptography.x509.oid import NameOID
 from facturacion_dian_api.core.dian.envelope import build_send_test_set_async_envelope
 from facturacion_dian_api.core.signing.certificate import CertificateBundle, load_certificate
 from facturacion_dian_api.core.signing.ws_security import sign_soap_envelope
+from facturacion_dian_api.core.signing.xades import (
+    sign_document,
+    verify_embedded_document_signature,
+)
 from lxml import etree
 
 MESSAGE = b"facturacion-dian-api crypto contract"
@@ -410,3 +414,31 @@ class TestWsSecuritySignatureIsVerifiable:
                 padding.PKCS1v15(),
                 hashes.SHA256(),
             )
+
+
+class TestEmbeddedXadesVerification:
+    """AttachedDocument sources must be signed and untampered."""
+
+    @staticmethod
+    def _signed_invoice(bundle: CertificateBundle) -> etree._Element:
+        ext_ns = "urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2"
+        cbc_ns = "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"
+        root = etree.Element(
+            "{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice",
+            nsmap={"ext": ext_ns, "cbc": cbc_ns},
+        )
+        extensions = etree.SubElement(root, f"{{{ext_ns}}}UBLExtensions")
+        extension = etree.SubElement(extensions, f"{{{ext_ns}}}UBLExtension")
+        etree.SubElement(extension, f"{{{ext_ns}}}ExtensionContent")
+        identifier = etree.SubElement(root, f"{{{cbc_ns}}}ID")
+        identifier.text = "FV1"
+        return sign_document(root, bundle)
+
+    def test_valid_embedded_signature_passes(self, bundle: CertificateBundle) -> None:
+        verify_embedded_document_signature(self._signed_invoice(bundle))
+
+    def test_tampered_embedded_signature_fails(self, bundle: CertificateBundle) -> None:
+        root = self._signed_invoice(bundle)
+        root.xpath("//*[local-name()='ID']")[0].text = "FV-TAMPERED"
+        with pytest.raises(ValueError, match="embedded XML signature is invalid"):
+            verify_embedded_document_signature(root)

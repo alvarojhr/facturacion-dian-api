@@ -36,6 +36,8 @@ Es una alternativa abierta y self-hosted frente a integraciones DIAN cerradas o 
 - [Guia de habilitacion](docs/guia-habilitacion.md)
 - [Catalogo de errores y rechazos DIAN](docs/catalogo-errores-dian.md)
 - [Troubleshooting operativo](docs/troubleshooting-operativo.md)
+- [Migracion del contrato fiscal de septiembre de 2026](docs/migracion-contrato-fiscal-2026-09.md)
+- [Implementacion de la auditoria fiscal](docs/auditorias/2026-09-15-implementacion-auditoria-fiscal.md)
 - [Ejemplos JSON canonicos](docs/examples)
 
 ## Inicio rapido
@@ -95,7 +97,7 @@ La respuesta publica normaliza estos campos:
 - `status`
 - `messages`
 - `dian_response`
-- `artifacts` opcional
+- `artifacts`, obligatorio en un envío para conservar el XML firmado
 
 ## Politica HTTP
 
@@ -103,7 +105,8 @@ La respuesta publica normaliza estos campos:
 - `503` cuando falta configuracion local o el certificado es invalido.
 - `502` cuando falla la comunicacion con DIAN sin ser timeout.
 - `504` cuando DIAN no responde a tiempo.
-- `200` cuando DIAN procesa la solicitud y devuelve aceptacion o rechazo funcional.
+- `200` cuando la API prepara el artefacto o devuelve el estado exacto reportado
+  por DIAN: recibido, pendiente, aceptado, rechazado, desconocido o error.
 
 ## Notas de implementacion
 

@@ -59,7 +59,14 @@ def resolved_issuer_nit(req: DocumentSubmitRequest) -> str:
 
 def resolved_issuer_dv(req: DocumentSubmitRequest) -> str:
     explicit = (req.issuer_dv or "").strip()
-    return explicit or settings.company.dv or compute_nit_dv(resolved_issuer_nit(req))
+    issuer_nit = req.issuer_nit or settings.company.nit
+    computed = compute_nit_dv(issuer_nit)
+    configured = explicit if req.issuer_nit else (settings.company.dv or "").strip()
+    if configured and configured != computed:
+        raise ValueError(
+            f"Issuer DV {configured} does not match NIT {issuer_nit} (expected {computed})"
+        )
+    return configured or computed
 
 
 def uses_body_owned_issuer(req: DocumentSubmitRequest) -> bool:
@@ -129,7 +136,7 @@ def resolved_issuer_tax_level_code(req: DocumentSubmitRequest) -> str:
     return _resolved_issuer_text(
         req,
         req.issuer_tax_level_code,
-        settings.company.tax_scheme,
+        settings.company.tax_level_code,
     )
 
 

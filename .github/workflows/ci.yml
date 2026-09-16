@@ -141,7 +141,7 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_PAT }}
 
-      - name: Compute next patch tag
+      - name: Compute next release tag
         id: next
         run: |
           latest=$(git tag -l 'v*.*.*' --sort=-v:refname | head -n1)
@@ -152,6 +152,9 @@ jobs:
           minor=${rest%%.*}
           patch=${rest#*.}
           next="v${major}.${minor}.$((patch + 1))"
+          # El contrato HTTP 0.2 rompe payloads de la línea OCI v1.
+          # Publicarlo como v2 evita reemplazar latest para consumidores antiguos.
+          if [ "${major}" -lt 2 ]; then next="v2.0.0"; fi
           echo "tag=${next}" >> "$GITHUB_OUTPUT"
           echo "Último tag: ${latest} → nuevo: ${next}"
 

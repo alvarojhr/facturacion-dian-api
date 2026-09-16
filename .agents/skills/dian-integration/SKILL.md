@@ -25,6 +25,7 @@ Read this skill when helping a team integrate the public API of `facturacion-dia
    `DIAN_SOFTWARE_ID`, `DIAN_SOFTWARE_PIN`, certificate path/password, issuer NIT, and `DIAN_TEST_SET_ID` in habilitacion.
 4. Distinguish HTTP contract errors from local configuration failures and from functional DIAN rejections.
 5. Prefer deterministic guidance grounded in the documented API, official endpoints, and canonical example payloads.
+6. Before sending, persist the prepared signed XML and official filename. Any retry must resend that exact artifact instead of signing again.
 
 ## Guardrails
 
@@ -34,3 +35,4 @@ Read this skill when helping a team integrate the public API of `facturacion-dia
 - If DIAN rejects a document functionally, explain the likely payload area involved and the next verification step.
 - Do not offer event `034` (aceptacion tacita): the issuer registers it, and the API does not expose it.
 - Do not tell callers the API enforces the event order `030 -> 032 -> (033 | 031)`; that belongs to the integrator.
+- Require a monotonically managed `file_sequence` in `submission_options`; it is part of the DIAN technical filename and must not be improvised per retry.

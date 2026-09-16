@@ -58,7 +58,8 @@ Campos del request:
 - `receiver_person` (obligatorio ante DIAN para el `032`)
 - `submission_options`, `client_reference`
 
-Campos de la respuesta: `status` (`ACCEPTED` | `REJECTED`), `cude`,
+Campos de la respuesta: `status` (`PREPARED`, `RECEIVED`, `PENDING`,
+`ACCEPTED`, `REJECTED`, `UNKNOWN` o `ERROR`), `cude`,
 `tracking_id`, `client_reference`, `messages`, `dian_response`, `artifacts`.
 
 Reglas que el integrador debe recordar:
@@ -67,7 +68,11 @@ Reglas que el integrador debe recordar:
   despliegue, no del request.
 - El endpoint es stateless: el orden `030 -> 032 -> (033 | 031)` y la ventana de
   reclamo son responsabilidad del integrador.
-- Los eventos no consumen numeracion DIAN; un reintento reenvia el mismo
-  documento y produce el mismo CUDE.
+- Los eventos no consumen numeracion DIAN. El integrador debe conservar el XML
+  firmado y el nombre tecnico devueltos al preparar el evento; un reintento
+  reenvia exactamente esos bytes para conservar CUDE, fecha, hora y firma.
+- `submission_options.file_sequence` es obligatorio para documentos y eventos.
+  El ERP/POS lo administra de forma monotona y reutiliza el mismo valor al
+  reintentar el mismo artefacto firmado.
 
 Para la guia completa, lee [`../../../../docs/integracion-http.md`](../../../../docs/integracion-http.md).

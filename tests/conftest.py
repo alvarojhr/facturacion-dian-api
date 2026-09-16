@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -49,6 +50,7 @@ def stub_live_dian_calls(
         del self, filename, content_b64, test_set_id
         return DianResponse(
             is_valid=True,
+            validation_result_present=True,
             status_code="00",
             status_description="Processed successfully.",
             status_message="Document received successfully.",
@@ -59,6 +61,7 @@ def stub_live_dian_calls(
         del self
         return DianResponse(
             is_valid=False,
+            validation_result_present=True,
             status_code="99",
             status_description="Document not found.",
             status_message="Tracking ID not found.",
@@ -125,6 +128,7 @@ def stub_live_dian_calls(
         del self, content_b64
         return DianResponse(
             is_valid=True,
+            validation_result_present=True,
             status_code="00",
             status_description="Procesado Correctamente",
             status_message="",
@@ -157,6 +161,12 @@ def stub_live_dian_calls(
     monkeypatch.setattr(DianClient, "get_numbering_range", fake_get_numbering_range)
     monkeypatch.setattr(DianClient, "get_xml_by_document_key", fake_get_xml_by_document_key)
     monkeypatch.setattr(DianClient, "send_event_update_status", fake_send_event_update_status)
+    # Public examples contain visible signature placeholders. Endpoint tests
+    # exercise container assembly; dedicated crypto tests use real signatures.
+    monkeypatch.setattr(
+        "facturacion_dian_api.core.xml.attached_document_builder.verify_embedded_document_signature",
+        lambda root: None,
+    )
     for module in ("submission", "events"):
         monkeypatch.setattr(
             f"facturacion_dian_api.core.{module}.get_certificate_bundle",
@@ -164,7 +174,7 @@ def stub_live_dian_calls(
         )
         monkeypatch.setattr(
             f"facturacion_dian_api.core.{module}.sign_document_xml",
-            lambda xml_root, bundle: b"<Signed>ok</Signed>",
+            lambda xml_root, bundle, *args: b"<Signed>ok</Signed>",
         )
 
 
@@ -177,7 +187,7 @@ def sample_invoice_payload() -> dict:
         "document": {
             "number": "FDK000001",
             "type": "FACTURA_ELECTRONICA",
-            "issue_date": "2026-03-12",
+            "issue_date": datetime.now(timezone(timedelta(hours=-5))).date().isoformat(),
             "issue_time": "14:30:00-05:00",
             "payment_method": "CASH",
         },
@@ -193,10 +203,19 @@ def sample_invoice_payload() -> dict:
             "department_code": "11",
             "department_name": "Bogota D.C.",
             "country_code": "CO",
+            "additional_account_id": "1",
+            "tax_level_code": "R-99-PN",
+            "tax_scheme_id": "01",
+            "tax_scheme_name": "IVA",
         },
         "resolution": {
             "number": "18764000001",
             "prefix": "FDK",
+            "date": "2026-01-01",
+            "range_from": 1,
+            "range_to": 999999,
+            "valid_from": "2026-01-01",
+            "valid_to": "2027-12-31",
         },
         "totals": {
             "subtotal": 100000,
@@ -206,6 +225,7 @@ def sample_invoice_payload() -> dict:
         "line_items": [
             {
                 "description": "Tornillo hexagonal 1/4 x 1 zinc",
+                "item_code": "TOR-001",
                 "quantity": 100,
                 "unit_price": 500,
                 "line_total": 50000,
@@ -214,6 +234,7 @@ def sample_invoice_payload() -> dict:
             },
             {
                 "description": "Tuerca hexagonal 1/4 zinc",
+                "item_code": "TUE-001",
                 "quantity": 100,
                 "unit_price": 500,
                 "line_total": 50000,
@@ -226,6 +247,7 @@ def sample_invoice_payload() -> dict:
             "software_pin": "12345",
             "technical_key": "fc8eac422eba16e22ffd8c6f94b3f40a6e38162c",
             "test_set_id": "test-set-123",
+            "file_sequence": 1,
         },
     }
 
@@ -248,6 +270,7 @@ def sample_event_payload() -> dict:
         "submission_options": {
             "software_id": "software-123",
             "software_pin": "12345",
+            "file_sequence": 1,
         },
     }
 
@@ -260,7 +283,7 @@ def sample_pos_payload() -> dict:
         "document": {
             "number": "POS000001",
             "type": "DOCUMENTO_EQUIVALENTE_POS",
-            "issue_date": "2026-03-12",
+            "issue_date": datetime.now(timezone(timedelta(hours=-5))).date().isoformat(),
             "issue_time": "10:15:30-05:00",
             "payment_method": "CARD",
             "point_of_sale": {
@@ -279,6 +302,11 @@ def sample_pos_payload() -> dict:
         "resolution": {
             "number": "18764000002",
             "prefix": "POS",
+            "date": "2026-01-01",
+            "range_from": 1,
+            "range_to": 999999,
+            "valid_from": "2026-01-01",
+            "valid_to": "2027-12-31",
         },
         "totals": {
             "subtotal": 42000,
@@ -288,6 +316,7 @@ def sample_pos_payload() -> dict:
         "line_items": [
             {
                 "description": "Martillo carpintero 16oz",
+                "item_code": "MAR-016",
                 "quantity": 1,
                 "unit_price": 42000,
                 "line_total": 42000,
@@ -299,6 +328,7 @@ def sample_pos_payload() -> dict:
             "software_id": "software-123",
             "software_pin": "12345",
             "test_set_id": "test-set-123",
+            "file_sequence": 1,
         },
     }
 
@@ -311,7 +341,7 @@ def sample_credit_note_payload() -> dict:
         "document": {
             "number": "NC000001",
             "type": "NOTA_CREDITO",
-            "issue_date": "2026-03-13",
+            "issue_date": datetime.now(timezone(timedelta(hours=-5))).date().isoformat(),
             "issue_time": "09:00:00-05:00",
             "payment_method": "CASH",
         },
@@ -319,10 +349,10 @@ def sample_credit_note_payload() -> dict:
             "document_number": "800199436",
             "document_type": "NIT",
             "name": "Empresa Ejemplo S.A.S.",
-        },
-        "resolution": {
-            "number": "18764000001",
-            "prefix": "NC",
+            "additional_account_id": "1",
+            "tax_level_code": "R-99-PN",
+            "tax_scheme_id": "01",
+            "tax_scheme_name": "IVA",
         },
         "totals": {
             "subtotal": 50000,
@@ -332,6 +362,7 @@ def sample_credit_note_payload() -> dict:
         "line_items": [
             {
                 "description": "Tornillo hexagonal 1/4 x 1 zinc",
+                "item_code": "TOR-001",
                 "quantity": 100,
                 "unit_price": 500,
                 "line_total": 50000,
@@ -344,11 +375,13 @@ def sample_credit_note_payload() -> dict:
             "referenced_document_key": "abc123def456",
             "referenced_issue_date": "2026-03-12",
             "reason": "Partial return",
+            "response_code": "1",
         },
         "submission_options": {
             "software_id": "software-123",
             "software_pin": "12345",
             "test_set_id": "test-set-123",
+            "file_sequence": 1,
         },
     }
 
@@ -361,7 +394,7 @@ def sample_debit_note_payload() -> dict:
         "document": {
             "number": "ND000001",
             "type": "NOTA_DEBITO",
-            "issue_date": "2026-03-13",
+            "issue_date": datetime.now(timezone(timedelta(hours=-5))).date().isoformat(),
             "issue_time": "11:00:00-05:00",
             "payment_method": "CASH",
         },
@@ -369,10 +402,10 @@ def sample_debit_note_payload() -> dict:
             "document_number": "800199436",
             "document_type": "NIT",
             "name": "Empresa Ejemplo S.A.S.",
-        },
-        "resolution": {
-            "number": "18764000001",
-            "prefix": "ND",
+            "additional_account_id": "1",
+            "tax_level_code": "R-99-PN",
+            "tax_scheme_id": "01",
+            "tax_scheme_name": "IVA",
         },
         "totals": {
             "subtotal": 10000,
@@ -382,6 +415,7 @@ def sample_debit_note_payload() -> dict:
         "line_items": [
             {
                 "description": "Ajuste por intereses",
+                "item_code": "AJU-001",
                 "quantity": 1,
                 "unit_price": 10000,
                 "line_total": 10000,
@@ -400,5 +434,6 @@ def sample_debit_note_payload() -> dict:
             "software_id": "software-123",
             "software_pin": "12345",
             "test_set_id": "test-set-123",
+            "file_sequence": 1,
         },
     }

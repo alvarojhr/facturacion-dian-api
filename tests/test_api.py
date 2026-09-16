@@ -5,7 +5,8 @@ from __future__ import annotations
 import base64
 import io
 import zipfile
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
+from types import SimpleNamespace
 
 import pytest
 from facturacion_dian_api.core.config import resolve_wsdl_url, settings
@@ -14,6 +15,7 @@ from facturacion_dian_api.core.dian.client import DianClient
 from facturacion_dian_api.core.dian.response_parser import DianResponse
 from facturacion_dian_api.core.errors import DianTimeoutError
 from facturacion_dian_api.server.contracts import DocumentSubmissionRequest
+from facturacion_dian_api.server.examples import ATTACHED_DOCUMENT_REQUEST_EXAMPLE
 from facturacion_dian_api.server.mappers import to_core_submission_request
 from fastapi.testclient import TestClient
 from lxml import etree
@@ -32,6 +34,7 @@ class TestHealthEndpoint:
         assert data["version"]
         assert data["dian_environment"] in ("habilitacion", "produccion")
         assert isinstance(data["certificate_loaded"], bool)
+        assert isinstance(data["certificate_expiring_soon"], bool)
 
     def test_root_returns_service_info(self, client: TestClient) -> None:
         response = client.get("/")
@@ -39,6 +42,22 @@ class TestHealthEndpoint:
         data = response.json()
         assert data["service"] == "facturacion-dian-api"
         assert data["version"]
+
+    def test_health_warns_before_certificate_expiry(
+        self,
+        client: TestClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        expires = datetime.now(UTC) + timedelta(days=5)
+        monkeypatch.setattr(
+            "facturacion_dian_api.server.api.health.get_certificate_bundle",
+            lambda: SimpleNamespace(is_valid=True, not_valid_after=expires),
+        )
+        response = client.get("/health")
+        assert response.status_code == 200
+        assert response.json()["status"] == "degraded"
+        assert response.json()["certificate_expiring_soon"] is True
+        assert response.json()["certificate_days_remaining"] in {4, 5}
 
 
 class TestDocumentSubmit:
@@ -56,9 +75,9 @@ class TestDocumentSubmit:
         assert data["document_key"] is not None
         assert len(data["document_key"]) == 96
         assert data["qr_url"] is not None
-        assert "catalogo-vpfe.dian.gov.co" in data["qr_url"]
+        assert "catalogo-vpfe-hab.dian.gov.co" in data["qr_url"]
         assert data["tracking_id"] is not None
-        assert data["artifacts"]["xml_filename"] == "ws_FDK000001.xml"
+        assert data["artifacts"]["xml_filename"] == "fv09001234560002600000001.xml"
         assert data["client_reference"] == "client-ref-001"
 
     def test_rejects_credit_without_due_date(
@@ -70,7 +89,7 @@ class TestDocumentSubmit:
             **sample_invoice_payload["document"],
             "payment_method": None,
             "payment_form": "CREDITO",
-            "payment_means": "TRANSFER",
+            "payment_methods": ["TRANSFER"],
         }
         response = client.post("/api/v1/documents/submissions", json=sample_invoice_payload)
         assert response.status_code == 422
@@ -84,8 +103,8 @@ class TestDocumentSubmit:
             **sample_invoice_payload["document"],
             "payment_method": None,
             "payment_form": "CREDITO",
-            "payment_means": "UNSPECIFIED",
-            "due_date": "2026-04-12",
+            "payment_methods": ["CREDIT"],
+            "payment_due_date": "2030-04-12",
         }
         sample_invoice_payload["buyer"] = {
             "document_number": "222222222222",
@@ -112,6 +131,8 @@ class TestDocumentSubmit:
             "department_name": "Santander",
             "country_code": "CO",
             "tax_level_code": "R-99-PN",
+            "tax_scheme_id": "01",
+            "tax_scheme_name": "IVA",
             "economic_activity": "4752",
             "phone": "3001234567",
             "email": "ana.perez@example.com",
@@ -134,6 +155,8 @@ class TestDocumentSubmit:
                 "issuer_department_name",
                 "issuer_country_code",
                 "issuer_tax_level_code",
+                "issuer_tax_scheme_id",
+                "issuer_tax_scheme_name",
                 "issuer_economic_activity",
                 "issuer_phone",
                 "issuer_email",
@@ -150,6 +173,8 @@ class TestDocumentSubmit:
             "issuer_department_name": issuer["department_name"],
             "issuer_country_code": issuer["country_code"],
             "issuer_tax_level_code": issuer["tax_level_code"],
+            "issuer_tax_scheme_id": issuer["tax_scheme_id"],
+            "issuer_tax_scheme_name": issuer["tax_scheme_name"],
             "issuer_economic_activity": issuer["economic_activity"],
             "issuer_phone": issuer["phone"],
             "issuer_email": issuer["email"],
@@ -206,15 +231,14 @@ class TestDocumentSubmit:
         response = client.post("/api/v1/documents/submissions", json={"document": {"number": "X"}})
         assert response.status_code == 422
 
-    def test_submit_without_xml_artifact_omits_artifacts(
+    def test_submit_cannot_disable_required_signed_artifact(
         self,
         client: TestClient,
         sample_invoice_payload: dict,
     ) -> None:
         sample_invoice_payload["submission_options"]["return_xml_artifact"] = False
         response = client.post("/api/v1/documents/submissions", json=sample_invoice_payload)
-        assert response.status_code == 200
-        assert response.json()["artifacts"] is None
+        assert response.status_code == 422
 
     def test_submit_returns_503_when_configuration_is_missing(
         self,
@@ -227,7 +251,7 @@ class TestDocumentSubmit:
         monkeypatch.setattr(settings.dian, "technical_key", "")
         monkeypatch.setattr(settings.dian, "test_set_id", "")
         payload = sample_invoice_payload.copy()
-        payload.pop("submission_options")
+        payload["submission_options"] = {"file_sequence": 1}
         response = client.post("/api/v1/documents/submissions", json=payload)
         assert response.status_code == 503
         assert "Missing required submission settings" in response.json()["detail"]
@@ -255,6 +279,7 @@ class TestDocumentSubmit:
             del self, filename, content_b64, test_set_id
             return DianResponse(
                 is_valid=True,
+                validation_result_present=True,
                 status_code="00",
                 status_description="Procesado Correctamente",
                 status_message="Documento aceptado",
@@ -269,10 +294,10 @@ class TestDocumentSubmit:
         assert response.status_code == 200
         artifacts = response.json()["artifacts"]
         # Ambos artefactos presentes: emisor + DIAN
-        assert artifacts["xml_filename"] == "ws_FDK000001.xml"
+        assert artifacts["xml_filename"] == "fv09001234560002600000001.xml"
         assert artifacts["xml_base64"] is not None
         assert base64.b64decode(artifacts["application_response_xml_base64"]) == ar_payload
-        assert artifacts["application_response_xml_filename"] == "ar_FDK000001.xml"
+        assert artifacts["application_response_xml_filename"] == "ar09001234560002600000001.xml"
 
     def test_submit_leaves_application_response_null_when_dian_omits_xml_bytes(
         self,
@@ -290,7 +315,7 @@ class TestDocumentSubmit:
         assert response.status_code == 200
         artifacts = response.json()["artifacts"]
         assert artifacts["xml_base64"] is not None  # XML del emisor siempre
-        assert artifacts["xml_filename"] == "ws_FDK000001.xml"
+        assert artifacts["xml_filename"] == "fv09001234560002600000001.xml"
         assert artifacts["application_response_xml_base64"] is None
         assert artifacts["application_response_xml_filename"] is None
 
@@ -341,6 +366,7 @@ class TestDocumentStatus:
             del self
             return DianResponse(
                 is_valid=True,
+                validation_result_present=True,
                 status_code="00",
                 status_description="Processed successfully.",
                 status_message="Document validated.",
@@ -391,7 +417,7 @@ class TestDocumentStatus:
 
         monkeypatch.setattr(DianClient, "get_status_zip", fake_status)
         monkeypatch.setattr(DianClient, "get_status", fake_status)
-        response = client.get("/api/v1/documents/submissions/track-key")
+        response = client.get("/api/v1/documents/submissions/track-key?environment=produccion")
         assert response.status_code == 200
         data = response.json()
         assert data["document_key"] == document_key
@@ -425,35 +451,38 @@ class TestDocumentStatus:
 class TestAttachedDocument:
     """Test AttachedDocument generation endpoint."""
 
-    def test_attached_document_returns_zip_package(self, client: TestClient) -> None:
+    def test_attached_document_returns_zip_package(
+        self,
+        client: TestClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        def serialize_with_signature(root: etree._Element, bundle: object) -> bytes:
+            del bundle
+            ns = {"ext": "urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2"}
+            content = root.find("ext:UBLExtensions/ext:UBLExtension/ext:ExtensionContent", ns)
+            assert content is not None
+            etree.SubElement(content, "{http://www.w3.org/2000/09/xmldsig#}Signature")
+            return etree.tostring(root)
+
+        monkeypatch.setattr(
+            "facturacion_dian_api.core.submission.sign_document_xml",
+            serialize_with_signature,
+        )
         response = client.post(
             "/api/v1/attached-documents",
-            json={
-                "document_number": "FDK123",
-                "document_type_code": "01",
-                "issuer_nit": "900123456",
-                "issuer_name": "Example Issuer SAS",
-                "receiver_name": "Cliente Demo SAS",
-                "receiver_email": "facturas@cliente.test",
-                "reply_to_email": "billing@example-issuer.test",
-                "company_name": "Example Issuer SAS",
-                "invoice_xml_base64": base64.b64encode(b"<Invoice>demo</Invoice>").decode("ascii"),
-                "invoice_xml_filename": "ws_FDK123.xml",
-                "issue_date": "2026-04-01",
-                "cufe": "abc123",
-            },
+            json=ATTACHED_DOCUMENT_REQUEST_EXAMPLE,
         )
 
         assert response.status_code == 200
         data = response.json()
-        assert data["xml_filename"] == "ad_FDK123.xml"
-        assert data["zip_filename"] == "ad_FDK123.zip"
+        assert data["xml_filename"] == "ad09001234560002600000001.xml"
+        assert data["zip_filename"] == "ad09001234560002600000001.zip"
 
         with zipfile.ZipFile(io.BytesIO(base64.b64decode(data["content_base64"]))) as zf:
-            assert zf.namelist() == ["ad_FDK123.xml"]
-            payload = zf.read("ad_FDK123.xml")
+            assert zf.namelist() == ["ad09001234560002600000001.xml"]
+            payload = zf.read("ad09001234560002600000001.xml")
             assert b"AttachedDocument" in payload
-            assert b"billing@example-issuer.test" in payload
+            assert b"ds:Signature" in payload
             # La DIAN exige el literal "ApplicationResponse" dentro del
             # DocumentReference del ParentDocumentLineReference, y que el
             # ResultOfVerification cuelgue de ese DocumentReference (UBL 2.1).
@@ -462,10 +491,38 @@ class TestAttachedDocument:
                 "cac": "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2",
                 "cbc": "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2",
             }
-            doc_ref = root.find("cac:ParentDocumentLineReference/cac:DocumentReference", ns)
+            assert len(root.findall(".//cac:ExternalReference", ns)) == 2
+            doc_ref = root.find(
+                "cac:ParentDocumentLineReference/cac:DocumentReference", ns
+            )
             assert doc_ref is not None
             assert doc_ref.findtext("cbc:DocumentType", namespaces=ns) == "ApplicationResponse"
-            assert doc_ref.find("cac:ResultOfVerification", ns) is not None
+            verification = doc_ref.find("cac:ResultOfVerification", ns)
+            assert verification is not None
+            assert verification.findtext("cbc:ValidationResultCode", namespaces=ns) == "02"
+            assert verification.findtext("cbc:ValidationDate", namespaces=ns) == "2026-04-01"
+            assert verification.findtext("cbc:ValidationTime", namespaces=ns) == "14:31:00-05:00"
+
+    def test_attached_document_rejects_a_non_accepted_dian_response(
+        self,
+        client: TestClient,
+    ) -> None:
+        payload = dict(ATTACHED_DOCUMENT_REQUEST_EXAMPLE)
+        response_xml = etree.fromstring(
+            base64.b64decode(payload["application_response_xml_base64"])
+        )
+        response_code = response_xml.xpath(
+            "//*[local-name()='DocumentResponse']/*[local-name()='Response']"
+            "/*[local-name()='ResponseCode']"
+        )[0]
+        response_code.text = "04"
+        payload["application_response_xml_base64"] = base64.b64encode(
+            etree.tostring(response_xml)
+        ).decode("ascii")
+
+        response = client.post("/api/v1/attached-documents", json=payload)
+        assert response.status_code == 422
+        assert "code 02" in response.json()["detail"]
 
 
 class TestEmitEvent:
@@ -484,10 +541,8 @@ class TestEmitEvent:
         assert data["tracking_id"] == "event-track-123"
         assert data["client_reference"] == "acuse-erp-1001"
         artifacts = data["artifacts"]
-        assert artifacts["application_response_xml_filename"] == "ar_030_SETP990000123.xml"
-        assert (
-            base64.b64decode(artifacts["application_response_xml_base64"]) == b"<Signed>ok</Signed>"
-        )
+        assert artifacts["application_response_xml_filename"] == "ar09001234560002600000001.xml"
+        assert base64.b64decode(artifacts["application_response_xml_base64"]) == b"<Signed>ok</Signed>"
         # DIAN no devolvio XML en el stub, asi que el artefacto propio queda nulo.
         assert artifacts["dian_response_xml_base64"] is None
 
@@ -651,6 +706,7 @@ class TestEmitEvent:
             del self, content_b64
             return DianResponse(
                 is_valid=False,
+                validation_result_present=True,
                 status_code="99",
                 status_description="Documento con errores",
                 error_messages=[
@@ -667,7 +723,7 @@ class TestEmitEvent:
         assert data["status"] == "REJECTED"
         assert "AAD06" in data["messages"][0]
         artifacts = data["artifacts"]
-        assert artifacts["dian_response_xml_filename"] == "dian_030_SETP990000123.xml"
+        assert artifacts["dian_response_xml_filename"] == "dian_ar09001234560002600000001.xml"
         assert (
             base64.b64decode(artifacts["dian_response_xml_base64"])
             == b"<ApplicationResponse>dian</ApplicationResponse>"
@@ -681,7 +737,7 @@ class TestEmitEvent:
     ) -> None:
         monkeypatch.setattr(settings.dian, "software_id", "")
         monkeypatch.setattr(settings.dian, "software_pin", "")
-        sample_event_payload.pop("submission_options")
+        sample_event_payload["submission_options"] = {"file_sequence": 1}
         response = client.post("/api/v1/events", json=sample_event_payload)
         assert response.status_code == 503
         assert "Missing required event settings" in response.json()["detail"]

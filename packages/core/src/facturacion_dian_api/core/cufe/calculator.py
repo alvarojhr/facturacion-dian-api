@@ -14,11 +14,13 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
+
+from facturacion_dian_api.core.monetary import money
 
 
-def _fmt_money(value_cop: int) -> str:
-    """Format COP integer as string with 2 decimal places.
+def _fmt_money(value_cop: int | Decimal) -> str:
+    """Format COP amount as string with 2 decimal places.
 
     DIAN requires monetary values with dot decimal separator, 2 digits,
     no thousands separator.
@@ -27,8 +29,7 @@ def _fmt_money(value_cop: int) -> str:
         1785000 → "1785000.00"
         0       → "0.00"
     """
-    d = Decimal(value_cop).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    return str(d)
+    return str(money(Decimal(value_cop)))
 
 
 # ─── DIAN Tax Codes ──────────────────────────────────────────
@@ -52,11 +53,11 @@ class CufeFields:
     num_fac: str        # Invoice number (e.g., "SETT000001")
     fec_fac: str        # Issue date "YYYY-MM-DD"
     hor_fac: str        # Issue time "HH:MM:SS-05:00"
-    val_fac: int        # Subtotal (COP, tax-exclusive)
-    val_iva: int        # IVA total (COP)
-    val_inc: int        # INC total (COP) — typically 0 for hardware store
-    val_ica: int        # ICA total (COP) — typically 0
-    val_tot_fac: int    # Grand total payable (COP)
+    val_fac: Decimal | int
+    val_iva: Decimal | int
+    val_inc: Decimal | int
+    val_ica: Decimal | int
+    val_tot_fac: Decimal | int
     nit_ofe: str        # Issuer NIT (no dots, dashes, or DV)
     num_adq: str        # Buyer identification (no dots, dashes, or DV)
     clave_tecnica: str  # Technical key from DIAN resolution
@@ -78,11 +79,11 @@ class CudeFields:
     num_fac: str
     fec_fac: str
     hor_fac: str
-    val_fac: int
-    val_iva: int
-    val_inc: int
-    val_ica: int
-    val_tot_fac: int
+    val_fac: Decimal | int
+    val_iva: Decimal | int
+    val_inc: Decimal | int
+    val_ica: Decimal | int
+    val_tot_fac: Decimal | int
     nit_ofe: str
     num_adq: str
     software_pin: str  # Software PIN instead of Technical Key
@@ -215,7 +216,7 @@ def calculate_software_security_code(
     return hashlib.sha384(seed.encode("utf-8")).hexdigest()
 
 
-def build_qr_url(document_key: str) -> str:
+def build_qr_url(document_key: str, environment: str = "produccion") -> str:
     """Build the DIAN catalog QR verification URL.
 
     Args:
@@ -224,4 +225,5 @@ def build_qr_url(document_key: str) -> str:
     Returns:
         Full URL for DIAN catalog QR code verification.
     """
-    return f"https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey={document_key}"
+    host = "catalogo-vpfe-hab.dian.gov.co" if environment == "habilitacion" else "catalogo-vpfe.dian.gov.co"
+    return f"https://{host}/document/searchqr?documentkey={document_key}"

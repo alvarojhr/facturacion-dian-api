@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 from base64 import b64encode
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
@@ -14,11 +15,13 @@ from lxml import etree
 from signxml import (
     CanonicalizationMethod,
     DigestAlgorithm,
+    InvalidSignature,
     SignatureConstructionMethod,
     SignatureMethod,
 )
+from signxml.exceptions import SignXMLException
 from signxml.util import add_pem_header, strip_pem_header
-from signxml.xades import XAdESSignaturePolicy, XAdESSigner
+from signxml.xades import XAdESSignaturePolicy, XAdESSigner, XAdESVerifier
 
 DIAN_POLICY_URL = (
     "https://facturaelectronica.dian.gov.co/politicadefirma/v2/politicadefirmav2.pdf"
@@ -101,7 +104,8 @@ class DianXAdESSigner(XAdESSigner):
             _qn(NS_XADES, "SigningTime"),
             nsmap=self.namespaces,
         )
-        signing_time.text = datetime.now(COLOMBIA_TZ).isoformat(timespec="milliseconds")
+        timestamp = getattr(self, "dian_signing_time", None) or datetime.now(COLOMBIA_TZ)
+        signing_time.text = timestamp.isoformat(timespec="milliseconds")
 
     def add_signing_certificate(self, signed_signature_properties, sig_root, signing_settings):  # type: ignore[override]
         signing_certificate = etree.SubElement(
@@ -140,7 +144,7 @@ class DianXAdESSigner(XAdESSigner):
         serial_number.text = str(leaf_cert.serial_number)
 
 
-def _build_signer() -> DianXAdESSigner:
+def _build_signer(signing_time: datetime | None = None) -> DianXAdESSigner:
     """Create an XAdES-EPES signer configured for DIAN requirements."""
     policy = XAdESSignaturePolicy(
         Identifier=DIAN_POLICY_URL,
@@ -158,18 +162,25 @@ def _build_signer() -> DianXAdESSigner:
         c14n_algorithm=CanonicalizationMethod.CANONICAL_XML_1_0,
     )
     signer.signed_data_object_properties_annotators = []
+    signer.dian_signing_time = signing_time
     return signer
 
 
 def sign_document(
     xml_root: etree._Element,
     bundle: CertificateBundle | None = None,
+    signing_time: datetime | None = None,
 ) -> etree._Element:
     """Sign a UBL XML document with XAdES-EPES for DIAN."""
     if bundle is None:
         bundle = get_certificate_bundle()
+    if not bundle.is_valid:
+        raise ValueError(
+            "The signing certificate is expired or not yet valid "
+            f"(valid until {bundle.not_valid_after.isoformat()})"
+        )
 
-    signer = _build_signer()
+    signer = _build_signer(signing_time)
     signed_root = signer.sign(
         xml_root,
         key=bundle.private_key,
@@ -199,7 +210,7 @@ def _relocate_signature(root: etree._Element) -> None:
         return
 
     ubl_extensions = extensions.findall(extension_tag)
-    if len(ubl_extensions) < 2:
+    if not ubl_extensions:
         return
 
     extension_content = ubl_extensions[-1].find(extension_content_tag)
@@ -224,9 +235,10 @@ def _set_signature_value_id(root: etree._Element) -> None:
 def sign_document_xml(
     xml_root: etree._Element,
     bundle: CertificateBundle | None = None,
+    signing_time: datetime | None = None,
 ) -> bytes:
     """Sign and serialize a UBL XML document."""
-    signed = sign_document(xml_root, bundle)
+    signed = sign_document(xml_root, bundle, signing_time)
     return etree.tostring(
         signed,
         xml_declaration=True,
@@ -234,3 +246,48 @@ def sign_document_xml(
         pretty_print=False,
     )
 
+
+def verify_document_signature(
+    xml_root: etree._Element,
+    bundle: CertificateBundle | None = None,
+) -> None:
+    """Verify that a retry artifact was signed by this deployment certificate."""
+    if bundle is None:
+        bundle = get_certificate_bundle()
+    try:
+        XAdESVerifier().verify(
+            xml_root,
+            x509_cert=bundle.cert_pem,
+            validate_schema=False,
+        )
+    except InvalidSignature as exc:
+        raise ValueError("The persisted XML signature is invalid for this deployment") from exc
+
+
+def verify_embedded_document_signature(xml_root: etree._Element) -> None:
+    """Verify an enveloped XAdES signature with its embedded certificate.
+
+    This proves artifact integrity. Trust in the embedded certificate's chain
+    remains an operational PKI check, but empty or tampered signatures cannot
+    enter an AttachedDocument.
+    """
+    certificate_b64 = str(
+        xml_root.xpath("string(.//*[local-name()='X509Certificate'][1])")
+    ).strip()
+    if not certificate_b64:
+        raise ValueError("The signed XML does not embed an X.509 certificate")
+    if not xml_root.xpath(
+        ".//*[local-name()='SignedInfo']/*[local-name()='Reference'][@URI='']"
+    ):
+        raise ValueError("The XML signature does not cover the complete document")
+    try:
+        certificate = x509.load_der_x509_certificate(
+            base64.b64decode("".join(certificate_b64.split()), validate=True)
+        )
+        XAdESVerifier().verify(
+            xml_root,
+            x509_cert=certificate.public_bytes(Encoding.PEM),
+            validate_schema=False,
+        )
+    except (ValueError, SignXMLException) as exc:
+        raise ValueError("The embedded XML signature is invalid") from exc
