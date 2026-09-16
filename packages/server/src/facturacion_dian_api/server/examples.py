@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import base64
 from copy import deepcopy
-from datetime import date
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
-TODAY = date.today().isoformat()
+# Los ejemplos usan la misma fecha colombiana que valida el contrato, incluso
+# cuando el proceso está en un host UTC y allá ya cambió el día.
+TODAY = datetime.now(timezone(timedelta(hours=-5))).date().isoformat()
 
 DOCUMENT_KEY_EXAMPLE = "demo-document-key-not-real"
 SIGNED_XML_BASE64 = base64.b64encode(b"<Signed>ok</Signed>").decode("ascii")

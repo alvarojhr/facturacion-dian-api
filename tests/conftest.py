@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -187,7 +187,7 @@ def sample_invoice_payload() -> dict:
         "document": {
             "number": "FDK000001",
             "type": "FACTURA_ELECTRONICA",
-            "issue_date": date.today().isoformat(),
+            "issue_date": datetime.now(timezone(timedelta(hours=-5))).date().isoformat(),
             "issue_time": "14:30:00-05:00",
             "payment_method": "CASH",
         },
@@ -283,7 +283,7 @@ def sample_pos_payload() -> dict:
         "document": {
             "number": "POS000001",
             "type": "DOCUMENTO_EQUIVALENTE_POS",
-            "issue_date": date.today().isoformat(),
+            "issue_date": datetime.now(timezone(timedelta(hours=-5))).date().isoformat(),
             "issue_time": "10:15:30-05:00",
             "payment_method": "CARD",
             "point_of_sale": {
@@ -341,7 +341,7 @@ def sample_credit_note_payload() -> dict:
         "document": {
             "number": "NC000001",
             "type": "NOTA_CREDITO",
-            "issue_date": date.today().isoformat(),
+            "issue_date": datetime.now(timezone(timedelta(hours=-5))).date().isoformat(),
             "issue_time": "09:00:00-05:00",
             "payment_method": "CASH",
         },
@@ -394,7 +394,7 @@ def sample_debit_note_payload() -> dict:
         "document": {
             "number": "ND000001",
             "type": "NOTA_DEBITO",
-            "issue_date": date.today().isoformat(),
+            "issue_date": datetime.now(timezone(timedelta(hours=-5))).date().isoformat(),
             "issue_time": "11:00:00-05:00",
             "payment_method": "CASH",
         },

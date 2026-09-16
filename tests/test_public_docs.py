@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
-from datetime import date
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from facturacion_dian_api.server.contracts import (
@@ -108,7 +108,7 @@ class TestPublicExamples:
             # JSON documentation is versioned and therefore carries a fixed
             # sample date. New fiscal documents must use today's date.
             if model is DocumentSubmissionRequest:
-                payload["document"]["issue_date"] = date.today().isoformat()
+                payload["document"]["issue_date"] = datetime.now(timezone(timedelta(hours=-5))).date().isoformat()
             model.model_validate(payload)
 
     def test_response_examples_validate_against_models(self) -> None:
