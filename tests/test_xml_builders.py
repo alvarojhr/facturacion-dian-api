@@ -723,7 +723,7 @@ class TestInvoiceBuilderTaxes:
         root = build_invoice_xml(excluded_request, FAKE_CUFE)
         assert _xpath(root, "cac:TaxTotal") == []
         assert _xpath_text(root, "cac:LegalMonetaryTotal/cbc:LineExtensionAmount") == "100000.00"
-        assert _xpath_text(root, "cac:LegalMonetaryTotal/cbc:TaxExclusiveAmount") == "0.00"
+        assert _xpath_text(root, "cac:LegalMonetaryTotal/cbc:TaxExclusiveAmount") == "100000.00"
         assert _xpath_text(root, "cac:LegalMonetaryTotal/cbc:TaxInclusiveAmount") == "100000.00"
 
     def test_excluded_lines_are_ignored_in_mixed_document_tax_totals(
@@ -769,7 +769,7 @@ class TestInvoiceBuilderTaxes:
         assert _xpath_text(root, "cac:TaxTotal/cbc:TaxAmount") == "9500.00"
         assert _xpath_text(root, "cac:TaxTotal/cac:TaxSubtotal/cbc:TaxableAmount") == "50000.00"
         assert _xpath_text(root, "cac:LegalMonetaryTotal/cbc:LineExtensionAmount") == "100000.00"
-        assert _xpath_text(root, "cac:LegalMonetaryTotal/cbc:TaxExclusiveAmount") == "50000.00"
+        assert _xpath_text(root, "cac:LegalMonetaryTotal/cbc:TaxExclusiveAmount") == "100000.00"
         assert _xpath_text(root, "cac:LegalMonetaryTotal/cbc:TaxInclusiveAmount") == "109500.00"
 
 
@@ -790,7 +790,7 @@ class TestInvoiceBuilderLines:
     def test_line_quantity(self, invoice_request: DocumentSubmitRequest) -> None:
         root = build_invoice_xml(invoice_request, FAKE_CUFE)
         qty = _xpath_text(root, "cac:InvoiceLine[1]/cbc:InvoicedQuantity")
-        assert qty == "100.0"  # quantity is float
+        assert qty == "100"
 
     def test_line_quantity_unit_code(self, invoice_request: DocumentSubmitRequest) -> None:
         root = build_invoice_xml(invoice_request, FAKE_CUFE)
@@ -1169,7 +1169,7 @@ class TestCreditNoteLines:
         root = build_credit_note_xml(credit_note_request, FAKE_CUFE)
         qty = _xpath(root, "cac:CreditNoteLine/cbc:CreditedQuantity")
         assert len(qty) == 1
-        assert qty[0].text == "100.0"  # quantity is float
+        assert qty[0].text == "100"
 
     def test_credit_note_monetary_total(
         self, credit_note_request: DocumentSubmitRequest
@@ -1204,7 +1204,7 @@ class TestDebitNoteBuilder:
     ) -> None:
         root = build_debit_note_xml(debit_note_request, FAKE_CUFE)
         assert len(_xpath(root, "cac:DebitNoteLine")) == 1
-        assert _xpath_text(root, "cac:DebitNoteLine/cbc:DebitedQuantity") == "1.0"
+        assert _xpath_text(root, "cac:DebitNoteLine/cbc:DebitedQuantity") == "1"
 
     def test_billing_reference_cufe(
         self, debit_note_request: DocumentSubmitRequest

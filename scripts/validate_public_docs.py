@@ -17,9 +17,14 @@ REQUIRED_DOCS = (
     REPO_ROOT / "docs" / "guia-habilitacion.md",
     REPO_ROOT / "docs" / "catalogo-errores-dian.md",
     REPO_ROOT / "docs" / "troubleshooting-operativo.md",
+    REPO_ROOT / "docs" / "migracion-contrato-fiscal-2026-09.md",
+    REPO_ROOT / "docs" / "auditorias" / "2026-09-15-implementacion-auditoria-fiscal.md",
 )
 
 REQUIRED_EXAMPLES = (
+    REPO_ROOT / "docs" / "examples" / "pagos-efectivo-debito.json",
+    REPO_ROOT / "docs" / "examples" / "pagos-efectivo-transferencia.json",
+    REPO_ROOT / "docs" / "examples" / "pagos-debito-credito.json",
     REPO_ROOT / "docs" / "examples" / "factura-electronica.json",
     REPO_ROOT / "docs" / "examples" / "documento-equivalente-pos.json",
     REPO_ROOT / "docs" / "examples" / "nota-credito.json",

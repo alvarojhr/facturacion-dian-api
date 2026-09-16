@@ -22,6 +22,7 @@ La API necesita secretos y material criptografico para firmar y hablar con DIAN.
 
 - `DIAN_CERT_PATH`
 - `DIAN_CERT_PASSWORD`
+- `DIAN_CERT_EXPIRY_WARNING_DAYS`
 - `DIAN_SOFTWARE_ID`
 - `DIAN_SOFTWARE_PIN`
 - `DIAN_TEST_SET_ID`
@@ -32,7 +33,11 @@ La API necesita secretos y material criptografico para firmar y hablar con DIAN.
 - monta el certificado con permisos minimos;
 - rota credenciales si un `.env` se expone;
 - evita compartir el mismo secreto entre ambientes;
-- valida localmente que la API cargue el certificado antes de enviar documentos.
+- valida localmente que la API cargue el certificado antes de enviar documentos;
+- monitorea `/health`: pasa a `degraded` y activa
+  `certificate_expiring_soon=true` dentro del umbral configurado;
+- después de rotar el archivo, verifica que `certificate_valid_until` cambie. La
+  caché se recarga al detectar la nueva versión del PKCS#12.
 
 ## Pitfalls comunes
 

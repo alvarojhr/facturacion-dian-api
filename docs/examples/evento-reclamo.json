@@ -11,6 +11,7 @@
   "claim_description": "Se recibieron 80 de las 100 unidades facturadas.",
   "submission_options": {
     "software_id": "software-demo-id",
-    "software_pin": "pin-demo-001"
+    "software_pin": "pin-demo-001",
+    "file_sequence": 3
   }
 }

@@ -5,7 +5,11 @@
     "type": "FACTURA_ELECTRONICA",
     "issue_date": "2026-09-15",
     "issue_time": "14:30:00-05:00",
-    "payment_method": "CASH"
+    "payment_methods": [
+      "DEBIT_CARD",
+      "CREDIT_CARD"
+    ],
+    "payment_form": "CONTADO"
   },
   "issuer": {
     "nit": "900123456",
@@ -52,32 +56,25 @@
     "valid_to": "2027-12-31"
   },
   "totals": {
-    "subtotal": 100000,
-    "tax_total": 19000,
-    "total": 119000
+    "subtotal": "2801.00",
+    "tax_total": "532.00",
+    "total": "3333.00"
   },
   "line_items": [
     {
-      "description": "Tornillo hexagonal 1/4 x 1 zinc",
-      "item_name": "Tornillo hexagonal 1/4 x 1 zinc",
-      "item_code": "TOR-001",
-      "unit_code": "94",
-      "quantity": 100,
-      "unit_price": 500,
-      "line_total": 50000,
-      "tax_type": "IVA_19",
-      "tax_amount": 9500
-    },
-    {
-      "description": "Tuerca hexagonal 1/4 zinc",
-      "item_name": "Tuerca hexagonal 1/4 zinc",
-      "item_code": "TUE-001",
-      "unit_code": "94",
-      "quantity": 100,
-      "unit_price": 500,
-      "line_total": 50000,
-      "tax_type": "IVA_19",
-      "tax_amount": 9500
+      "description": "Material vendido por metro",
+      "item_code": "MT-1",
+      "unit_code": "MTR",
+      "quantity": "3.333",
+      "unit_price": "840.34",
+      "line_total": "2801.00",
+      "taxes": [
+        {
+          "tax_type": "IVA_19",
+          "taxable_amount": "2801.00",
+          "amount": "532.00"
+        }
+      ]
     }
   ],
   "submission_options": {
@@ -86,6 +83,7 @@
     "technical_key": "technical-key-demo-001",
     "test_set_id": "test-set-demo-001",
     "return_xml_artifact": true,
-    "file_sequence": 1
+    "file_sequence": 1,
+    "prepare_only": true
   }
 }

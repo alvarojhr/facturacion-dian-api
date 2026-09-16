@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 from facturacion_dian_api.server.contracts import (
@@ -41,6 +42,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_EXAMPLES_DIR = REPO_ROOT / "docs" / "examples"
 
 REQUEST_MODELS = {
+    "pagos-efectivo-debito.json": DocumentSubmissionRequest,
+    "pagos-efectivo-transferencia.json": DocumentSubmissionRequest,
+    "pagos-debito-credito.json": DocumentSubmissionRequest,
     "factura-electronica.json": DocumentSubmissionRequest,
     "documento-equivalente-pos.json": DocumentSubmissionRequest,
     "nota-credito.json": DocumentSubmissionRequest,
@@ -70,6 +74,8 @@ PUBLIC_DOC_FILES = [
     REPO_ROOT / "docs" / "guia-habilitacion.md",
     REPO_ROOT / "docs" / "catalogo-errores-dian.md",
     REPO_ROOT / "docs" / "troubleshooting-operativo.md",
+    REPO_ROOT / "docs" / "migracion-contrato-fiscal-2026-09.md",
+    REPO_ROOT / "docs" / "auditorias" / "2026-09-15-implementacion-auditoria-fiscal.md",
     REPO_ROOT / ".agents" / "skills" / "dian-integration" / "SKILL.md",
     REPO_ROOT / ".agents" / "skills" / "dian-integration" / "references" / "http-api.md",
     REPO_ROOT / ".agents" / "skills" / "dian-integration" / "references" / "examples.md",
@@ -98,7 +104,12 @@ class TestPublicExamples:
 
     def test_request_examples_validate_against_models(self) -> None:
         for filename, model in REQUEST_MODELS.items():
-            model.model_validate(_load_json(filename))
+            payload = _load_json(filename)
+            # JSON documentation is versioned and therefore carries a fixed
+            # sample date. New fiscal documents must use today's date.
+            if model is DocumentSubmissionRequest:
+                payload["document"]["issue_date"] = date.today().isoformat()
+            model.model_validate(payload)
 
     def test_response_examples_validate_against_models(self) -> None:
         for filename, model in RESPONSE_MODELS.items():
@@ -137,6 +148,8 @@ class TestPublicDocs:
         assert "API HTTP de alto nivel" in readme
         assert "No se publica PyPI ni npm" in readme
         assert "POST /api/v1/documents/submissions" in readme
+        assert "Migracion del contrato fiscal" in readme
+        assert "Implementacion de la auditoria fiscal" in readme
 
     def test_sdk_placeholder_files_are_gone(self) -> None:
         assert not (REPO_ROOT / "packages" / "sdk-python" / "README.md").exists()

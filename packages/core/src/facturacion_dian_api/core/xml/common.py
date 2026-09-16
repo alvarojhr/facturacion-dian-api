@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
+from typing import cast
 
 from facturacion_dian_api.core.config import settings
-from facturacion_dian_api.core.models import DocumentLine, DocumentSubmitRequest
+from facturacion_dian_api.core.models import (
+    AllowanceCharge,
+    DocumentLine,
+    DocumentSubmitRequest,
+    LineTax,
+)
+from facturacion_dian_api.core.monetary import money
 from facturacion_dian_api.core.runtime_config import (
     resolved_issuer_additional_account_id,
     resolved_issuer_address,
@@ -65,9 +72,16 @@ CUSTOMER_ADDITIONAL_ACCOUNT_IDS = {
 }
 
 
-def _money(value_cop: int) -> str:
-    """Format COP integer to string with 2 decimal places."""
-    return str(Decimal(value_cop).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+def _money(value_cop: int | Decimal) -> str:
+    """Format a COP amount with the precision required by DIAN."""
+    return str(money(Decimal(value_cop)))
+
+
+def _percent(value: Decimal | str) -> str:
+    # Preserve accepted rates with more than two decimals; never change the
+    # rate after validating its amount. Keep legacy two-decimal formatting.
+    rate = Decimal(value)
+    return format(rate, ".2f") if rate == money(rate) else format(rate, "f")
 
 
 def _sub(parent: etree._Element, tag: str, text: str | None = None, **attrib: str) -> etree._Element:
@@ -86,7 +100,7 @@ def _normalize_tax_level_code(value: str | None, *, default: str) -> str:
     if not normalized:
         return default
 
-    compact = normalized.replace("-", "")
+    parts = [part.strip() for part in normalized.split(";") if part.strip()]
     numeric_map = {
         "13": "O-13",
         "15": "O-15",
@@ -95,8 +109,14 @@ def _normalize_tax_level_code(value: str | None, *, default: str) -> str:
         "99PN": FINAL_CONSUMER_TAX_LEVEL_CODE,
         "R99PN": FINAL_CONSUMER_TAX_LEVEL_CODE,
     }
-    normalized = numeric_map.get(compact, normalized)
-    return normalized if normalized in VALID_TAX_LEVEL_CODES else default
+    normalized_parts: list[str] = []
+    for part in parts:
+        compact = part.replace("-", "")
+        normalized_part = numeric_map.get(compact, part)
+        if normalized_part not in VALID_TAX_LEVEL_CODES:
+            raise ValueError(f"Unknown DIAN fiscal responsibility: {part}")
+        normalized_parts.append(normalized_part)
+    return ";".join(normalized_parts) if normalized_parts else default
 
 
 def _compute_nit_dv(identifier: str | None) -> str | None:
@@ -205,7 +225,8 @@ def build_ubl_extensions(
     qr_code: str | None = None,
     *,
     include_software_manufacturer: bool = False,
-) -> etree._Element:
+    include_invoice_control: bool = True,
+) -> etree._Element | None:
     """Build ext:UBLExtensions and return sts:InvoiceControl."""
     extensions = _sub(root, ext("UBLExtensions"))
 
@@ -213,7 +234,9 @@ def build_ubl_extensions(
     content1 = _sub(ext1, ext("ExtensionContent"))
     dian_ext = _sub(content1, sts("DianExtensions"))
 
-    invoice_control = _sub(dian_ext, sts("InvoiceControl"))
+    invoice_control = (
+        _sub(dian_ext, sts("InvoiceControl")) if include_invoice_control else None
+    )
 
     invoice_source = _sub(dian_ext, sts("InvoiceSource"))
     _sub(
@@ -425,8 +448,8 @@ def build_supplier_party(parent: etree._Element, prefix: str, req: DocumentSubmi
     _sub(ta_country, cbc("IdentificationCode"), country_code)
     _sub(ta_country, cbc("Name"), _country_name(country_code), languageID="es")
     scheme = _sub(tax_scheme_elem, cac("TaxScheme"))
-    _sub(scheme, cbc("ID"), "01")
-    _sub(scheme, cbc("Name"), "IVA")
+    _sub(scheme, cbc("ID"), req.issuer_tax_scheme_id or settings.company.tax_scheme_id)
+    _sub(scheme, cbc("Name"), req.issuer_tax_scheme_name or settings.company.tax_scheme_name)
 
     legal = _sub(party, cac("PartyLegalEntity"))
     _sub(legal, cbc("RegistrationName"), issuer_name)
@@ -454,7 +477,11 @@ def build_customer_party(parent: etree._Element, req: DocumentSubmitRequest) -> 
     buyer_identifier_type = CUSTOMER_DOCUMENT_SCHEME_NAMES[customer_document_type]
     buyer_verification_digit = _compute_nit_dv(req.customer_nit) if customer_document_type == "NIT" else None
 
-    _sub(customer, cbc("AdditionalAccountID"), CUSTOMER_ADDITIONAL_ACCOUNT_IDS[customer_document_type])
+    _sub(
+        customer,
+        cbc("AdditionalAccountID"),
+        req.customer_additional_account_id or CUSTOMER_ADDITIONAL_ACCOUNT_IDS[customer_document_type],
+    )
 
     party = _sub(customer, cac("Party"))
     party_identification = _sub(party, cac("PartyIdentification"))
@@ -500,15 +527,15 @@ def build_customer_party(parent: etree._Element, req: DocumentSubmitRequest) -> 
     _sub(
         tax_scheme_elem,
         cbc("TaxLevelCode"),
-        FINAL_CONSUMER_TAX_LEVEL_CODE,
+        _normalize_tax_level_code(req.customer_tax_level_code, default=FINAL_CONSUMER_TAX_LEVEL_CODE),
         listName="05",
     )
 
     tax_address = _sub(tax_scheme_elem, cac("RegistrationAddress"))
     _build_customer_address(tax_address, req)
     scheme = _sub(tax_scheme_elem, cac("TaxScheme"))
-    _sub(scheme, cbc("ID"), "ZZ")
-    _sub(scheme, cbc("Name"), "No aplica")
+    _sub(scheme, cbc("ID"), req.customer_tax_scheme_id or "ZZ")
+    _sub(scheme, cbc("Name"), req.customer_tax_scheme_name or "No aplica")
 
     legal = _sub(party, cac("PartyLegalEntity"))
     _sub(legal, cbc("RegistrationName"), req.customer_name)
@@ -527,116 +554,122 @@ def build_customer_party(parent: etree._Element, req: DocumentSubmitRequest) -> 
             _sub(contact, cbc("ElectronicMail"), req.customer_email)
 
 
-def build_payment_means(parent: etree._Element, payment_method: str, due_date: str) -> None:
-    """Build cac:PaymentMeans element."""
-    pm = _sub(parent, cac("PaymentMeans"))
-    code = PAYMENT_MEANS.get(payment_method, "10")
-    _sub(pm, cbc("ID"), "1")
-    _sub(pm, cbc("PaymentMeansCode"), code)
-    _sub(pm, cbc("PaymentDueDate"), due_date)
+def build_payment_means(
+    parent: etree._Element,
+    payment_methods: list[str],
+    payment_form: str,
+    due_date: str,
+) -> None:
+    """One block per supplied instrument, with the document's common terms."""
+    for payment_method in payment_methods:
+        pm = _sub(parent, cac("PaymentMeans"))
+        code = PAYMENT_MEANS[payment_method]
+        _sub(pm, cbc("ID"), "2" if payment_form == "CREDITO" else "1")
+        _sub(pm, cbc("PaymentMeansCode"), code)
+        _sub(pm, cbc("PaymentDueDate"), due_date)
 
 
 def build_tax_totals(parent: etree._Element, lines: list[DocumentLine]) -> None:
-    """Build document-level cac:TaxTotal blocks.
-
-    DIAN requires one ``cac:TaxTotal`` per tax scheme (FAS01) and one
-    ``cac:TaxSubtotal`` per tariff within that scheme (FAS04). Excluded items
-    must not emit taxes at either header or line level, so ``EXCLUDED`` lines
-    are skipped entirely here.
-    """
-    tax_totals: dict[str, dict[str, object]] = {}
-
+    """Build percentage, per-unit and withholding totals without silent fallback."""
+    groups: dict[tuple[str, str], dict[str, object]] = {}
     for line in lines:
-        dian_tax = TAX_TYPE_TO_DIAN.get(line.tax_type, TAX_TYPE_TO_DIAN["EXCLUDED"])
-        if str(dian_tax["code"]) == "ZZ":
-            continue
+        for tax in line.taxes:
+            definition = _tax_definition(tax)
+            code = str(definition["code"])
+            if tax.tax_type == "EXCLUDED":
+                continue
+            total_tag = "WithholdingTaxTotal" if definition.get("withholding") else "TaxTotal"
+            group = groups.setdefault(
+                (total_tag, code),
+                {
+                    "tag": total_tag,
+                    "code": code,
+                    "name": str(definition["name"]),
+                    "amount": Decimal("0"),
+                    "subtotals": {},
+                },
+            )
+            group["amount"] += tax.amount  # type: ignore[operator]
+            percent = tax.percent
+            if percent is None and definition.get("percent") is not None:
+                percent = Decimal(str(definition["percent"]))
+            key = (percent, tax.per_unit_amount, line.unit_code if tax.per_unit_amount is not None else None)
+            subtotals = group["subtotals"]
+            assert isinstance(subtotals, dict)
+            subtotal = subtotals.setdefault(
+                key,
+                {
+                    "percent": percent,
+                    "per_unit_amount": tax.per_unit_amount,
+                    "base_unit_measure": Decimal("0"),
+                    "unit_code": line.unit_code,
+                    "taxable_amount": Decimal("0"),
+                    "tax_amount": Decimal("0"),
+                },
+            )
+            subtotal["taxable_amount"] += tax.taxable_amount if tax.taxable_amount is not None else line.line_total  # type: ignore[operator]
+            subtotal["tax_amount"] += tax.amount  # type: ignore[operator]
+            if tax.base_unit_measure is not None:
+                subtotal["base_unit_measure"] += tax.base_unit_measure
 
-        code = str(dian_tax["code"])
-        percent = str(dian_tax["percent"])
-        tax_total = tax_totals.setdefault(
-            code,
-            {
-                "code": code,
-                "name": str(dian_tax["name"]),
-                "tax_amount": 0,
-                "subtotals": {},
-            },
-        )
-        subtotals = tax_total["subtotals"]
-        assert isinstance(subtotals, dict)
-        subtotal = subtotals.setdefault(
-            percent,
-            {
-                "percent": percent,
-                "taxable_amount": 0,
-                "tax_amount": 0,
-            },
-        )
-        subtotal["taxable_amount"] += line.line_total  # type: ignore[operator]
-        subtotal["tax_amount"] += line.tax_amount  # type: ignore[operator]
-        tax_total["tax_amount"] += line.tax_amount  # type: ignore[operator]
-
-    for group in tax_totals.values():
-        tax_total = _sub(parent, cac("TaxTotal"))
-        _sub(
-            tax_total,
-            cbc("TaxAmount"),
-            _money(int(group["tax_amount"])),
-            currencyID=CURRENCY_COP,
-        )
-
+    for group in groups.values():
+        total = _sub(parent, cac(str(group["tag"])))
+        _sub(total, cbc("TaxAmount"), _money(group["amount"]), currencyID=CURRENCY_COP)  # type: ignore[arg-type]
         subtotals = group["subtotals"]
         assert isinstance(subtotals, dict)
-        for subtotal_group in subtotals.values():
-            subtotal = _sub(tax_total, cac("TaxSubtotal"))
-            _sub(
-                subtotal,
-                cbc("TaxableAmount"),
-                _money(int(subtotal_group["taxable_amount"])),
-                currencyID=CURRENCY_COP,
-            )
-            _sub(
-                subtotal,
-                cbc("TaxAmount"),
-                _money(int(subtotal_group["tax_amount"])),
-                currencyID=CURRENCY_COP,
-            )
-            tax_cat = _sub(subtotal, cac("TaxCategory"))
-            _sub(tax_cat, cbc("Percent"), str(subtotal_group["percent"]))
-            scheme = _sub(tax_cat, cac("TaxScheme"))
+        for values in subtotals.values():
+            subtotal = _sub(total, cac("TaxSubtotal"))
+            _sub(subtotal, cbc("TaxableAmount"), _money(values["taxable_amount"]), currencyID=CURRENCY_COP)
+            _sub(subtotal, cbc("TaxAmount"), _money(values["tax_amount"]), currencyID=CURRENCY_COP)
+            category = _sub(subtotal, cac("TaxCategory"))
+            if values["per_unit_amount"] is not None:
+                _sub(category, cbc("BaseUnitMeasure"), str(values["base_unit_measure"]), unitCode=values["unit_code"])
+                _sub(category, cbc("PerUnitAmount"), _money(values["per_unit_amount"]), currencyID=CURRENCY_COP)
+            elif values["percent"] is not None:
+                _sub(category, cbc("Percent"), _percent(values["percent"]))
+            scheme = _sub(category, cac("TaxScheme"))
             _sub(scheme, cbc("ID"), str(group["code"]))
             _sub(scheme, cbc("Name"), str(group["name"]))
 
 
-def _line_extension_amount(lines: list[DocumentLine]) -> int:
+def _tax_definition(tax: LineTax) -> dict[str, object]:
+    if tax.tax_type == "OTHER":
+        return {"code": tax.scheme_id or "ZZ", "name": tax.scheme_name or "Otros"}
+    try:
+        return cast(dict[str, object], dict(TAX_TYPE_TO_DIAN[tax.tax_type]))
+    except KeyError as exc:  # defensive: model literals normally catch this first
+        raise ValueError(f"Unsupported tax type: {tax.tax_type}") from exc
+
+
+def _line_extension_amount(lines: list[DocumentLine]) -> Decimal:
     """Return the commercial value before taxes for all lines."""
-    return sum(line.line_total for line in lines)
+    return sum((line.line_total for line in lines), Decimal("0"))
 
 
-def _tax_exclusive_amount(lines: list[DocumentLine]) -> int:
-    """Return the taxable base reported at line level.
-
-    DIAN FAU04 / CAU04 / DAU04 validates this against the sum of
-    ``InvoiceLine|CreditNoteLine|DebitNoteLine/TaxTotal/TaxSubtotal/TaxableAmount``.
-    Excluded items do not emit ``TaxTotal``, so they must not contribute here.
-    """
-    total = 0
-    for line in lines:
-        dian_tax = TAX_TYPE_TO_DIAN.get(line.tax_type, TAX_TYPE_TO_DIAN["EXCLUDED"])
-        if str(dian_tax["code"]) == "ZZ":
-            continue
-        total += line.line_total
-    return total
+def build_allowance_charges(parent: etree._Element, entries: list[AllowanceCharge]) -> None:
+    """Emit UBL allowance/charge blocks in the order supplied by the ERP."""
+    for index, entry in enumerate(entries, start=1):
+        node = _sub(parent, cac("AllowanceCharge"))
+        _sub(node, cbc("ID"), str(index))
+        _sub(node, cbc("ChargeIndicator"), "true" if entry.charge_indicator else "false")
+        if entry.reason_code:
+            _sub(node, cbc("AllowanceChargeReasonCode"), entry.reason_code)
+        _sub(node, cbc("AllowanceChargeReason"), entry.reason)
+        if entry.percentage is not None:
+            _sub(node, cbc("MultiplierFactorNumeric"), str(entry.percentage / Decimal("100")))
+        _sub(node, cbc("Amount"), _money(entry.amount), currencyID=CURRENCY_COP)
+        if entry.base_amount is not None:
+            _sub(node, cbc("BaseAmount"), _money(entry.base_amount), currencyID=CURRENCY_COP)
 
 
 def build_legal_monetary_total(
     parent: etree._Element,
-    lines: list[DocumentLine],
-    total: int,
+    req: DocumentSubmitRequest,
 ) -> None:
     """Build cac:LegalMonetaryTotal element."""
-    line_extension_amount = _line_extension_amount(lines)
-    tax_exclusive_amount = _tax_exclusive_amount(lines)
+    line_extension_amount = _line_extension_amount(req.lines)
+    tax_exclusive_amount = req.subtotal - req.allowance_total + req.charge_total
+    tax_inclusive_amount = tax_exclusive_amount + req.tax_total
     lmt = _sub(parent, cac("LegalMonetaryTotal"))
     _sub(
         lmt,
@@ -650,20 +683,24 @@ def build_legal_monetary_total(
         _money(tax_exclusive_amount),
         currencyID=CURRENCY_COP,
     )
-    _sub(lmt, cbc("TaxInclusiveAmount"), _money(total), currencyID=CURRENCY_COP)
-    _sub(lmt, cbc("AllowanceTotalAmount"), "0.00", currencyID=CURRENCY_COP)
-    _sub(lmt, cbc("ChargeTotalAmount"), "0.00", currencyID=CURRENCY_COP)
-    _sub(lmt, cbc("PayableAmount"), _money(total), currencyID=CURRENCY_COP)
+    _sub(lmt, cbc("TaxInclusiveAmount"), _money(tax_inclusive_amount), currencyID=CURRENCY_COP)
+    _sub(lmt, cbc("AllowanceTotalAmount"), _money(req.allowance_total), currencyID=CURRENCY_COP)
+    _sub(lmt, cbc("ChargeTotalAmount"), _money(req.charge_total), currencyID=CURRENCY_COP)
+    if req.prepaid_amount:
+        _sub(lmt, cbc("PrepaidAmount"), _money(req.prepaid_amount), currencyID=CURRENCY_COP)
+    if req.payable_rounding_amount:
+        _sub(lmt, cbc("PayableRoundingAmount"), _money(req.payable_rounding_amount), currencyID=CURRENCY_COP)
+    _sub(lmt, cbc("PayableAmount"), _money(req.total), currencyID=CURRENCY_COP)
 
 
 def build_requested_monetary_total(
     parent: etree._Element,
-    lines: list[DocumentLine],
-    total: int,
+    req: DocumentSubmitRequest,
 ) -> None:
     """Build cac:RequestedMonetaryTotal for DebitNote documents."""
-    line_extension_amount = _line_extension_amount(lines)
-    tax_exclusive_amount = _tax_exclusive_amount(lines)
+    line_extension_amount = _line_extension_amount(req.lines)
+    tax_exclusive_amount = req.subtotal - req.allowance_total + req.charge_total
+    tax_inclusive_amount = tax_exclusive_amount + req.tax_total
     rmt = _sub(parent, cac("RequestedMonetaryTotal"))
     _sub(
         rmt,
@@ -677,10 +714,14 @@ def build_requested_monetary_total(
         _money(tax_exclusive_amount),
         currencyID=CURRENCY_COP,
     )
-    _sub(rmt, cbc("TaxInclusiveAmount"), _money(total), currencyID=CURRENCY_COP)
-    _sub(rmt, cbc("AllowanceTotalAmount"), "0.00", currencyID=CURRENCY_COP)
-    _sub(rmt, cbc("ChargeTotalAmount"), "0.00", currencyID=CURRENCY_COP)
-    _sub(rmt, cbc("PayableAmount"), _money(total), currencyID=CURRENCY_COP)
+    _sub(rmt, cbc("TaxInclusiveAmount"), _money(tax_inclusive_amount), currencyID=CURRENCY_COP)
+    _sub(rmt, cbc("AllowanceTotalAmount"), _money(req.allowance_total), currencyID=CURRENCY_COP)
+    _sub(rmt, cbc("ChargeTotalAmount"), _money(req.charge_total), currencyID=CURRENCY_COP)
+    if req.prepaid_amount:
+        _sub(rmt, cbc("PrepaidAmount"), _money(req.prepaid_amount), currencyID=CURRENCY_COP)
+    if req.payable_rounding_amount:
+        _sub(rmt, cbc("PayableRoundingAmount"), _money(req.payable_rounding_amount), currencyID=CURRENCY_COP)
+    _sub(rmt, cbc("PayableAmount"), _money(req.total), currencyID=CURRENCY_COP)
 
 
 def build_invoice_line(
@@ -710,18 +751,51 @@ def build_invoice_line(
 
     _sub(inv_line, cbc("LineExtensionAmount"), _money(line.line_total), currencyID=CURRENCY_COP)
 
-    dian_tax = TAX_TYPE_TO_DIAN.get(line.tax_type, TAX_TYPE_TO_DIAN["EXCLUDED"])
-    if str(dian_tax["code"]) != "ZZ":
-        line_tax = _sub(inv_line, cac("TaxTotal"))
-        _sub(line_tax, cbc("TaxAmount"), _money(line.tax_amount), currencyID=CURRENCY_COP)
+    if line.reference_price is not None:
+        alternative = _sub(inv_line, cac("PricingReference"))
+        price_node = _sub(alternative, cac("AlternativeConditionPrice"))
+        _sub(price_node, cbc("PriceAmount"), _money(line.reference_price), currencyID=CURRENCY_COP)
+        _sub(price_node, cbc("PriceTypeCode"), line.reference_price_type_code or "01")
+
+    build_allowance_charges(inv_line, line.allowance_charges)
+
+    for tax in line.taxes:
+        definition = _tax_definition(tax)
+        if tax.tax_type == "EXCLUDED":
+            continue
+        total_tag = "WithholdingTaxTotal" if definition.get("withholding") else "TaxTotal"
+        line_tax = _sub(inv_line, cac(total_tag))
+        _sub(line_tax, cbc("TaxAmount"), _money(tax.amount), currencyID=CURRENCY_COP)
         line_subtotal = _sub(line_tax, cac("TaxSubtotal"))
-        _sub(line_subtotal, cbc("TaxableAmount"), _money(line.line_total), currencyID=CURRENCY_COP)
-        _sub(line_subtotal, cbc("TaxAmount"), _money(line.tax_amount), currencyID=CURRENCY_COP)
+        _sub(
+            line_subtotal,
+            cbc("TaxableAmount"),
+            _money(tax.taxable_amount if tax.taxable_amount is not None else line.line_total),
+            currencyID=CURRENCY_COP,
+        )
+        _sub(line_subtotal, cbc("TaxAmount"), _money(tax.amount), currencyID=CURRENCY_COP)
         tax_cat = _sub(line_subtotal, cac("TaxCategory"))
-        _sub(tax_cat, cbc("Percent"), str(dian_tax["percent"]))
+        percent = tax.percent
+        if percent is None and definition.get("percent") is not None:
+            percent = Decimal(str(definition["percent"]))
+        if tax.per_unit_amount is not None:
+            _sub(
+                tax_cat,
+                cbc("BaseUnitMeasure"),
+                str(tax.base_unit_measure),
+                unitCode=unit_code,
+            )
+            _sub(
+                tax_cat,
+                cbc("PerUnitAmount"),
+                _money(tax.per_unit_amount),
+                currencyID=CURRENCY_COP,
+            )
+        elif percent is not None:
+            _sub(tax_cat, cbc("Percent"), _percent(percent))
         scheme = _sub(tax_cat, cac("TaxScheme"))
-        _sub(scheme, cbc("ID"), str(dian_tax["code"]))
-        _sub(scheme, cbc("Name"), str(dian_tax["name"]))
+        _sub(scheme, cbc("ID"), str(definition["code"]))
+        _sub(scheme, cbc("Name"), str(definition["name"]))
 
     item = _sub(inv_line, cac("Item"))
     _sub(item, cbc("Description"), line.description)

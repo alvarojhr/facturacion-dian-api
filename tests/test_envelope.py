@@ -320,8 +320,9 @@ class TestResponseParser:
   </s:Body>
 </s:Envelope>"""
         resp = parse_send_bill_response(resp_xml)
-        assert resp.is_valid is True
-        assert resp.is_accepted is True
+        assert resp.is_valid is False
+        assert resp.is_accepted is False
+        assert resp.processing_status == "pending"
         assert resp.tracking_id == "1350f01d-3d19-4440-a153-fa60490af22d"
 
     def test_parse_send_test_set_async_errors(self) -> None:
@@ -492,4 +493,3 @@ class TestGetXmlByDocumentKeyEnvelope:
         env = build_get_xml_by_document_key_envelope(ENDPOINT, "cufe-123")
         assert env.startswith(b"<?xml")
         assert _parse(env).tag == f"{{{NS_SOAP}}}Envelope"
-

@@ -46,6 +46,10 @@ from cryptography.x509.oid import NameOID
 from facturacion_dian_api.core.dian.envelope import build_send_test_set_async_envelope
 from facturacion_dian_api.core.signing.certificate import CertificateBundle, load_certificate
 from facturacion_dian_api.core.signing.ws_security import sign_soap_envelope
+from facturacion_dian_api.core.signing.xades import (
+    sign_document,
+    verify_embedded_document_signature,
+)
 from lxml import etree
 
 # ─── Clave RSA-2048 fija (material de prueba) ──────────────────
@@ -153,6 +157,34 @@ class TestRsaKnownAnswer:
         # DIAN exige claves RSA de 2048 bits; si la reconstruccion cambiara de
         # tamano el vector de arriba dejaria de significar lo que dice.
         assert fixed_key.key_size == 2048
+
+
+class TestEmbeddedXadesVerification:
+    """AttachedDocument sources must be signed and untampered."""
+
+    @staticmethod
+    def _signed_invoice(bundle: CertificateBundle) -> etree._Element:
+        ext_ns = "urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2"
+        cbc_ns = "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"
+        root = etree.Element(
+            "{urn:oasis:names:specification:ubl:schema:xsd:Invoice-2}Invoice",
+            nsmap={"ext": ext_ns, "cbc": cbc_ns},
+        )
+        extensions = etree.SubElement(root, f"{{{ext_ns}}}UBLExtensions")
+        extension = etree.SubElement(extensions, f"{{{ext_ns}}}UBLExtension")
+        etree.SubElement(extension, f"{{{ext_ns}}}ExtensionContent")
+        identifier = etree.SubElement(root, f"{{{cbc_ns}}}ID")
+        identifier.text = "FV1"
+        return sign_document(root, bundle)
+
+    def test_valid_embedded_signature_passes(self, bundle: CertificateBundle) -> None:
+        verify_embedded_document_signature(self._signed_invoice(bundle))
+
+    def test_tampered_embedded_signature_fails(self, bundle: CertificateBundle) -> None:
+        root = self._signed_invoice(bundle)
+        root.xpath("//*[local-name()='ID']")[0].text = "FV-TAMPERED"
+        with pytest.raises(ValueError, match="embedded XML signature is invalid"):
+            verify_embedded_document_signature(root)
 
     def test_pinned_vector_verifies_against_the_public_key(
         self, fixed_key: rsa.RSAPrivateKey
@@ -285,6 +317,47 @@ class TestPkcs12Encodings:
         )
 
         assert base64.b64encode(signature).decode("ascii") == _KAT_SIGNATURE_B64
+
+    def test_rejects_certificate_without_digital_signature_usage(
+        self,
+        tmp_path: Path,
+        fixed_key: rsa.RSAPrivateKey,
+    ) -> None:
+        name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "No signing")])
+        now = datetime.now(UTC)
+        cert = (
+            x509.CertificateBuilder()
+            .subject_name(name)
+            .issuer_name(name)
+            .public_key(fixed_key.public_key())
+            .serial_number(10)
+            .not_valid_before(now - timedelta(days=1))
+            .not_valid_after(now + timedelta(days=30))
+            .add_extension(
+                x509.KeyUsage(
+                    digital_signature=False,
+                    content_commitment=False,
+                    key_encipherment=True,
+                    data_encipherment=False,
+                    key_agreement=False,
+                    key_cert_sign=False,
+                    crl_sign=False,
+                    encipher_only=None,
+                    decipher_only=None,
+                ),
+                critical=True,
+            )
+            .sign(fixed_key, hashes.SHA256())
+        )
+        path = self._write(
+            tmp_path / "no-signing.p12",
+            fixed_key,
+            cert,
+            serialization.BestAvailableEncryption(CERT_PASSWORD.encode()),
+        )
+
+        with pytest.raises(ValueError, match="does not permit digital signatures"):
+            load_certificate(str(path), CERT_PASSWORD)
 
 
 # ═══════════════════════════════════════════════════════════════

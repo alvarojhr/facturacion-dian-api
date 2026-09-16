@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import calendar
-from datetime import date
-
 from facturacion_dian_api.core.cufe.calculator import calculate_software_security_code
 from facturacion_dian_api.core.models import DocumentSubmitRequest
 from facturacion_dian_api.core.runtime_config import (
@@ -14,6 +11,7 @@ from facturacion_dian_api.core.runtime_config import (
 )
 from facturacion_dian_api.core.xml.common import (
     _sub,
+    build_allowance_charges,
     build_customer_party,
     build_invoice_control,
     build_invoice_line,
@@ -37,6 +35,7 @@ from facturacion_dian_api.core.xml.namespaces import (
 from lxml import etree
 
 CREDIT_NOTE_PROFILE_ID = "DIAN 2.1: Nota Crédito de Factura Electrónica de Venta"
+DEE_ADJUSTMENT_PROFILE_ID = "DIAN 2.1: Nota de Ajuste de Documento Equivalente Electrónico"
 
 
 def build_credit_note_xml(
@@ -45,7 +44,22 @@ def build_credit_note_xml(
     qr_code: str | None = None,
 ) -> etree._Element:
     """Build a complete UBL 2.1 CreditNote XML for DIAN."""
-    credit_note_number = req.credit_note_number or req.invoice_number
+    is_dee_adjustment = req.document_type in {
+        "NOTA_AJUSTE_DEE_CREDITO",
+        "NOTA_AJUSTE_DEE_DEBITO",
+    }
+    is_dee_debit = req.document_type == "NOTA_AJUSTE_DEE_DEBITO"
+    credit_note_number = (
+        req.debit_note_number if is_dee_debit else req.credit_note_number
+    ) or req.invoice_number
+    note_reason = (
+        req.debit_note_reason if is_dee_debit else req.credit_note_reason
+    ) or "Nota de ajuste"
+    note_response_code = (
+        req.debit_note_response_code
+        if is_dee_debit
+        else req.credit_note_response_code
+    ) or "1"
     referenced_issue_date = req.referenced_invoice_issue_date or req.issue_date
 
     root = etree.Element(f"{{{NS_CREDIT_NOTE}}}CreditNote", nsmap=NSMAP_CREDIT_NOTE)
@@ -61,24 +75,32 @@ def build_credit_note_xml(
         req,
         software_security_code,
         qr_code,
+        include_invoice_control=bool(req.resolution_number),
     )
-    range_from, range_to, valid_from, valid_to = resolve_invoice_control(req)
-    build_invoice_control(
-        invoice_control,
-        req.resolution_number,
-        req.prefix,
-        range_from,
-        range_to,
-        valid_from,
-        valid_to,
-    )
+    if invoice_control is not None:
+        range_from, range_to, valid_from, valid_to = resolve_invoice_control(req)
+        build_invoice_control(
+            invoice_control,
+            req.resolution_number,
+            req.prefix,
+            range_from,
+            range_to,
+            valid_from,
+            valid_to,
+        )
 
     has_reference = bool(req.referenced_invoice_number)
-    customization_id = CUSTOMIZATION_CREDIT_NOTE if has_reference else CUSTOMIZATION_CREDIT_NOTE_NO_ASOCIADA
+    customization_id = (
+        "10"
+        if is_dee_adjustment
+        else CUSTOMIZATION_CREDIT_NOTE
+        if has_reference
+        else CUSTOMIZATION_CREDIT_NOTE_NO_ASOCIADA
+    )
 
     _sub(root, cbc("UBLVersionID"), "UBL 2.1")
     _sub(root, cbc("CustomizationID"), customization_id)
-    _sub(root, cbc("ProfileID"), CREDIT_NOTE_PROFILE_ID)
+    _sub(root, cbc("ProfileID"), DEE_ADJUSTMENT_PROFILE_ID if is_dee_adjustment else CREDIT_NOTE_PROFILE_ID)
     _sub(root, cbc("ProfileExecutionID"), resolved_tipo_ambiente(req))
     _sub(root, cbc("ID"), credit_note_number)
     _sub(
@@ -90,8 +112,12 @@ def build_credit_note_xml(
     )
     _sub(root, cbc("IssueDate"), req.issue_date)
     _sub(root, cbc("IssueTime"), req.issue_time)
-    _sub(root, cbc("CreditNoteTypeCode"), CREDIT_NOTE_TYPE)
-    _sub(root, cbc("Note"), req.credit_note_reason or "Nota Crédito")
+    _sub(
+        root,
+        cbc("CreditNoteTypeCode"),
+        "93" if is_dee_debit else "94" if is_dee_adjustment else CREDIT_NOTE_TYPE,
+    )
+    _sub(root, cbc("Note"), note_reason if is_dee_adjustment else req.credit_note_reason or "Nota Crédito")
     _sub(
         root,
         cbc("DocumentCurrencyCode"),
@@ -104,35 +130,43 @@ def build_credit_note_xml(
 
     # Tipo 22 (no reference): ResponseCode "1" (devolución parcial) — annulment forbidden
     # Tipo 1 (with reference): ResponseCode "1" as well — safer and accurate for POS returns
-    response_code = "1"
+    response_code = note_response_code
 
     if not has_reference:
-        # CAE02/CAE04: Tipo 22 requires InvoicePeriod covering the billing month
-        year, month, _ = (int(p) for p in req.issue_date.split("-"))
-        period_start = date(year, month, 1).isoformat()
-        period_end = date(year, month, calendar.monthrange(year, month)[1]).isoformat()
+        if not req.billing_period_start or not req.billing_period_end:
+            raise ValueError("A non-associated credit note requires an explicit billing period")
         invoice_period = _sub(root, cac("InvoicePeriod"))
-        _sub(invoice_period, cbc("StartDate"), period_start)
-        _sub(invoice_period, cbc("EndDate"), period_end)
+        _sub(invoice_period, cbc("StartDate"), req.billing_period_start)
+        _sub(invoice_period, cbc("EndDate"), req.billing_period_end)
 
     discrepancy = _sub(root, cac("DiscrepancyResponse"))
     if has_reference:
         _sub(discrepancy, cbc("ReferenceID"), req.referenced_invoice_number)
     _sub(discrepancy, cbc("ResponseCode"), response_code)
-    _sub(discrepancy, cbc("Description"), req.credit_note_reason or "Devolución parcial")
+    _sub(
+        discrepancy,
+        cbc("Description"),
+        note_reason if is_dee_adjustment else req.credit_note_reason or "Devolución parcial",
+    )
 
     if has_reference:
         billing_ref = _sub(root, cac("BillingReference"))
         invoice_ref = _sub(billing_ref, cac("InvoiceDocumentReference"))
         _sub(invoice_ref, cbc("ID"), req.referenced_invoice_number)
-        _sub(invoice_ref, cbc("UUID"), req.referenced_invoice_cufe or "", schemeName="CUFE-SHA384")
+        _sub(
+            invoice_ref,
+            cbc("UUID"),
+            req.referenced_invoice_cufe or "",
+            schemeName="CUDE-SHA384" if is_dee_adjustment else "CUFE-SHA384",
+        )
         _sub(invoice_ref, cbc("IssueDate"), referenced_issue_date)
 
     build_supplier_party(root, req.prefix, req)
     build_customer_party(root, req)
-    build_payment_means(root, req.payment_method, req.issue_date)
+    build_payment_means(root, req.resolved_payment_methods, req.payment_form, req.payment_due_date or req.issue_date)
+    build_allowance_charges(root, req.allowance_charges)
     build_tax_totals(root, req.lines)
-    build_legal_monetary_total(root, req.lines, req.total)
+    build_legal_monetary_total(root, req)
 
     for index, line in enumerate(req.lines, start=1):
         build_invoice_line(root, index, line, tag_name="CreditNoteLine")
@@ -148,4 +182,3 @@ def credit_note_to_xml_string(root: etree._Element) -> bytes:
         encoding="UTF-8",
         pretty_print=True,
     )
-

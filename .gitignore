@@ -12,6 +12,7 @@ __pycache__/
 htmlcov/
 dist/
 build/
+/tmp/fiscal-020/
 .DS_Store
 Thumbs.db
 certificates/*.p12

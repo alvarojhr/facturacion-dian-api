@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
+from facturacion_dian_api.core.models import Environment
 from facturacion_dian_api.core.submission import DocumentSubmissionService
 from facturacion_dian_api.server.contracts import (
     AttachedDocumentRequest,
@@ -29,7 +30,7 @@ from facturacion_dian_api.server.mappers import (
     to_public_attached_document_response,
     to_public_submission_response,
 )
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, HTTPException, Query
 
 router = APIRouter(prefix="/api/v1", tags=["Documentos"])
 service = DocumentSubmissionService()
@@ -41,7 +42,7 @@ service = DocumentSubmissionService()
     summary="Enviar documento electronico",
     responses={
         200: {
-            "description": "DIAN proceso la solicitud y devolvio un resultado funcional.",
+            "description": "Artefacto preparado o estado exacto devuelto por DIAN.",
             "content": {"application/json": {"example": DOCUMENT_SUBMISSION_RESPONSE_EXAMPLE}},
         },
         502: {"description": "Falla upstream o de transporte con DIAN.", "content": {"application/json": {"example": ERROR_502_EXAMPLE}}},
@@ -58,7 +59,7 @@ async def submit_document(
     """Submit a document through the public high-level DIAN API."""
 
     core_request = to_core_submission_request(req)
-    include_xml_artifact = True if req.submission_options is None else req.submission_options.return_xml_artifact
+    include_xml_artifact = req.submission_options.return_xml_artifact
     result = await service.submit_document(
         core_request,
         include_xml_artifact=include_xml_artifact,
@@ -72,17 +73,20 @@ async def submit_document(
     summary="Consultar estado por tracking_id",
     responses={
         200: {
-            "description": "Estado funcional devuelto por DIAN.",
+            "description": "Estado de procesamiento devuelto por DIAN.",
             "content": {"application/json": {"example": DOCUMENT_STATUS_RESPONSE_EXAMPLE}},
         },
         502: {"description": "Falla upstream o de transporte con DIAN.", "content": {"application/json": {"example": ERROR_502_EXAMPLE}}},
         504: {"description": "Timeout llamando a DIAN.", "content": {"application/json": {"example": ERROR_504_EXAMPLE}}},
     },
 )
-async def get_document_status(tracking_id: str) -> DocumentSubmissionResponse:
+async def get_document_status(
+    tracking_id: str,
+    environment: Environment | None = Query(default=None),
+) -> DocumentSubmissionResponse:
     """Look up the DIAN status for a previously submitted tracking id."""
 
-    result = await service.get_status(tracking_id)
+    result = await service.get_status(tracking_id, environment=environment)
     return to_public_submission_response(result)
 
 
@@ -130,7 +134,10 @@ async def build_attached_document(
 ) -> AttachedDocumentResponse:
     """Build a DIAN AttachedDocument ZIP package."""
 
-    result = service.build_attached_document(to_core_attached_document_request(req))
+    try:
+        result = service.build_attached_document(to_core_attached_document_request(req))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     return to_public_attached_document_response(
         result.xml_filename,
         result.zip_filename,

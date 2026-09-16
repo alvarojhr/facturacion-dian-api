@@ -11,6 +11,7 @@ from facturacion_dian_api.core.runtime_config import (
 )
 from facturacion_dian_api.core.xml.common import (
     _sub,
+    build_allowance_charges,
     build_customer_party,
     build_invoice_control,
     build_invoice_line,
@@ -29,6 +30,7 @@ from facturacion_dian_api.core.xml.namespaces import (
     INVOICE_TYPE_FACTURA,
     NS_INVOICE,
     NSMAP_INVOICE,
+    cac,
     cbc,
 )
 from lxml import etree
@@ -43,7 +45,9 @@ def build_invoice_xml(
     qr_code: str | None = None,
 ) -> etree._Element:
     """Build a complete UBL 2.1 Invoice XML for DIAN."""
-    is_pos = req.document_type == "DOCUMENTO_EQUIVALENTE_POS"
+    is_pos = req.document_type.startswith("DOCUMENTO_EQUIVALENTE_POS")
+    is_contingency = req.document_type.startswith("FACTURA_CONTINGENCIA")
+    is_pos_contingency = "POS_CONTINGENCIA" in req.document_type
     root = etree.Element(f"{{{NS_INVOICE}}}Invoice", nsmap=NSMAP_INVOICE)
 
     software_security_code = calculate_software_security_code(
@@ -59,6 +63,7 @@ def build_invoice_xml(
         qr_code,
         include_software_manufacturer=is_pos,
     )
+    assert invoice_control is not None
     range_from, range_to, valid_from, valid_to = resolve_invoice_control(req)
     build_invoice_control(
         invoice_control,
@@ -74,7 +79,7 @@ def build_invoice_xml(
     _sub(
         root,
         cbc("CustomizationID"),
-        CUSTOMIZATION_DOC_EQUIVALENTE if is_pos else CUSTOMIZATION_FACTURA,
+        "20" if is_contingency else (CUSTOMIZATION_DOC_EQUIVALENTE if is_pos else CUSTOMIZATION_FACTURA),
     )
     _sub(root, cbc("ProfileID"), POS_PROFILE_ID if is_pos else FACTURA_PROFILE_ID)
     _sub(root, cbc("ProfileExecutionID"), resolved_tipo_ambiente(req))
@@ -90,13 +95,25 @@ def build_invoice_xml(
 
     _sub(root, cbc("IssueDate"), req.issue_date)
     _sub(root, cbc("IssueTime"), req.issue_time)
-    _sub(root, cbc("DueDate"), req.issue_date)
+    _sub(root, cbc("DueDate"), req.payment_due_date or req.issue_date)
     _sub(
         root,
         cbc("InvoiceTypeCode"),
-        INVOICE_TYPE_DOC_EQUIVALENTE_POS if is_pos else INVOICE_TYPE_FACTURA,
+        (
+            "07"
+            if req.document_type == "DOCUMENTO_EQUIVALENTE_POS_CONTINGENCIA_EMISOR"
+            else "08"
+            if req.document_type == "DOCUMENTO_EQUIVALENTE_POS_CONTINGENCIA_DIAN"
+            else "04"
+            if req.document_type == "FACTURA_CONTINGENCIA_DIAN"
+            else "03"
+            if req.document_type == "FACTURA_CONTINGENCIA_FACTURADOR"
+            else INVOICE_TYPE_DOC_EQUIVALENTE_POS
+            if is_pos
+            else INVOICE_TYPE_FACTURA
+        ),
     )
-    _sub(root, cbc("Note"), "")
+    _sub(root, cbc("Note"), req.contingency_reason or "")
     _sub(
         root,
         cbc("DocumentCurrencyCode"),
@@ -107,11 +124,21 @@ def build_invoice_xml(
     )
     _sub(root, cbc("LineCountNumeric"), str(len(req.lines)))
 
+    if is_contingency or is_pos_contingency:
+        reference = _sub(root, cac("AdditionalDocumentReference"))
+        _sub(reference, cbc("ID"), req.contingency_reference_number or "")
+        _sub(reference, cbc("IssueDate"), req.contingency_reference_date or req.issue_date)
     build_supplier_party(root, req.prefix, req)
     build_customer_party(root, req)
-    build_payment_means(root, req.payment_method, req.issue_date)
+    build_payment_means(
+        root,
+        req.resolved_payment_methods,
+        req.payment_form,
+        req.payment_due_date or req.issue_date,
+    )
+    build_allowance_charges(root, req.allowance_charges)
     build_tax_totals(root, req.lines)
-    build_legal_monetary_total(root, req.lines, req.total)
+    build_legal_monetary_total(root, req)
 
     for index, line in enumerate(req.lines, start=1):
         build_invoice_line(root, index, line, tag_name="InvoiceLine")
@@ -127,4 +154,3 @@ def invoice_to_xml_string(root: etree._Element) -> bytes:
         encoding="UTF-8",
         pretty_print=True,
     )
-

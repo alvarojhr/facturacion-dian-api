@@ -11,9 +11,10 @@ from cryptography.hazmat.primitives.serialization import (
     Encoding,
     NoEncryption,
     PrivateFormat,
+    PublicFormat,
     pkcs12,
 )
-from cryptography.x509 import Certificate
+from cryptography.x509 import Certificate, ExtensionNotFound, KeyUsage
 from facturacion_dian_api.core.config import WORKING_DIRECTORY, settings
 
 
@@ -111,6 +112,26 @@ def load_certificate(
     if private_key is None or certificate is None:
         raise ValueError("Certificate file must contain a private key and certificate")
 
+    private_public = private_key.public_key().public_bytes(
+        Encoding.DER,
+        PublicFormat.SubjectPublicKeyInfo,
+    )
+    certificate_public = certificate.public_key().public_bytes(
+        Encoding.DER,
+        PublicFormat.SubjectPublicKeyInfo,
+    )
+    if private_public != certificate_public:
+        raise ValueError("Certificate public key does not match its private key")
+
+    try:
+        key_usage = certificate.extensions.get_extension_for_class(KeyUsage).value
+    except ExtensionNotFound:
+        key_usage = None
+    if key_usage is not None and not (
+        key_usage.digital_signature or key_usage.content_commitment
+    ):
+        raise ValueError("Certificate key usage does not permit digital signatures")
+
     return CertificateBundle(
         private_key=cast(PrivateKeyLike, private_key),
         certificate=certificate,
@@ -119,19 +140,27 @@ def load_certificate(
 
 
 _bundle: CertificateBundle | None = None
+_bundle_source: tuple[str, int] | None = None
 
 
 def get_certificate_bundle() -> CertificateBundle:
     """Get or load the certificate bundle (cached singleton)."""
 
-    global _bundle  # noqa: PLW0603
-    if _bundle is None:
+    global _bundle, _bundle_source  # noqa: PLW0603
+    path = settings.dian.resolved_cert_path
+    try:
+        source = (str(path.resolve()), path.stat().st_mtime_ns)
+    except FileNotFoundError:
+        source = (str(path.resolve()), -1)
+    if _bundle is None or _bundle_source != source:
         _bundle = load_certificate()
+        _bundle_source = source
     return _bundle
 
 
 def reset_certificate_cache() -> None:
     """Clear the cached certificate bundle (for testing)."""
 
-    global _bundle  # noqa: PLW0603
+    global _bundle, _bundle_source  # noqa: PLW0603
     _bundle = None
+    _bundle_source = None

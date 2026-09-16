@@ -12,6 +12,7 @@
   "client_reference": "acuse-erp-1001",
   "submission_options": {
     "software_id": "software-demo-id",
-    "software_pin": "pin-demo-001"
+    "software_pin": "pin-demo-001",
+    "file_sequence": 1
   }
 }

@@ -15,10 +15,12 @@ Usa esta guia para validar la conectividad y el flujo funcional con DIAN antes d
 
 1. Verifica que `/health` responda y que el certificado cargue correctamente.
 2. Envia un payload conocido y valido, por ejemplo [`examples/factura-electronica.json`](examples/factura-electronica.json).
-3. Guarda `tracking_id` y `submission_id`.
-4. Consulta `GET /api/v1/documents/submissions/{tracking_id}` hasta recibir resultado funcional.
-5. Repite con los tipos documentales que vayas a usar en produccion.
-6. Solo despues de corridas estables cambia secretos y endpoints a produccion.
+3. Primero usa `prepare_only=true`, reserva `file_sequence` y guarda el XML firmado.
+4. Transmite ese XML y guarda `tracking_id`, `submission_id`, CUFE/CUDE y nombre técnico.
+5. Consulta `GET /api/v1/documents/submissions/{tracking_id}?environment=habilitacion` hasta recibir resultado funcional.
+6. Guarda el `ApplicationResponse` DIAN y construye el `AttachedDocument` para los casos de entrega.
+7. Repite la matriz descrita en [implementación de la auditoría fiscal](auditorias/2026-09-15-implementacion-auditoria-fiscal.md).
+8. Solo después de corridas estables cambia secretos y endpoints a producción.
 
 ## Que revisar si falla
 
@@ -33,4 +35,6 @@ Usa esta guia para validar la conectividad y el flujo funcional con DIAN antes d
 - la API carga certificado sin degradacion;
 - los payloads base pasan sin ajustes manuales;
 - el polling de estado devuelve resultados coherentes;
+- factura, notas, ajustes DEE y contingencias usadas tienen AR aceptado y evidencia restaurable;
+- los XML canónicos pasan el XSD de la caja DIAN que se desplegará;
 - el equipo ya tiene definidos procedimientos de rotacion de secretos y monitoreo.

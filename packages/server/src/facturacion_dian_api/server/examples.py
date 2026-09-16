@@ -3,10 +3,38 @@
 from __future__ import annotations
 
 import base64
+from copy import deepcopy
+from datetime import date
+from typing import Any
+
+TODAY = date.today().isoformat()
 
 DOCUMENT_KEY_EXAMPLE = "demo-document-key-not-real"
 SIGNED_XML_BASE64 = base64.b64encode(b"<Signed>ok</Signed>").decode("ascii")
-INVOICE_XML_BASE64 = base64.b64encode(b"<Invoice>demo</Invoice>").decode("ascii")
+INVOICE_XML_BASE64 = base64.b64encode(
+    f'''<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
+      xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"
+      xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+      <cbc:ProfileExecutionID>2</cbc:ProfileExecutionID><cbc:ID>FDK000001</cbc:ID>
+      <cbc:UUID>{DOCUMENT_KEY_EXAMPLE}</cbc:UUID><cbc:IssueDate>2026-04-01</cbc:IssueDate>
+      <cbc:IssueTime>14:30:00-05:00</cbc:IssueTime><ds:Signature/>
+    </Invoice>'''.encode()
+).decode("ascii")
+DIAN_AR_XML_BASE64 = base64.b64encode(
+    b'''<ApplicationResponse xmlns="urn:oasis:names:specification:ubl:schema:xsd:ApplicationResponse-2"
+      xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"
+      xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+      xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+      <cbc:ID>AR-DEMO-1</cbc:ID><cbc:IssueDate>2026-04-01</cbc:IssueDate>
+      <cbc:IssueTime>14:31:00-05:00</cbc:IssueTime><ds:Signature/>
+      <cac:DocumentResponse><cac:Response><cbc:ResponseCode>02</cbc:ResponseCode>
+      <cbc:Description>Documento Validado por la DIAN</cbc:Description></cac:Response>
+      <cac:DocumentReference><cbc:ID>FDK000001</cbc:ID>
+      <cbc:UUID>demo-document-key-not-real</cbc:UUID>
+      <cbc:DocumentTypeCode>01</cbc:DocumentTypeCode></cac:DocumentReference>
+      </cac:DocumentResponse>
+    </ApplicationResponse>'''
+).decode("ascii")
 ZIP_BASE64_EXAMPLE = base64.b64encode(b"zip-demo").decode("ascii")
 
 DOCUMENT_SUBMISSION_INVOICE_EXAMPLE = {
@@ -14,13 +42,13 @@ DOCUMENT_SUBMISSION_INVOICE_EXAMPLE = {
     "document": {
         "number": "FDK000001",
         "type": "FACTURA_ELECTRONICA",
-        "issue_date": "2026-03-12",
+        "issue_date": TODAY,
         "issue_time": "14:30:00-05:00",
         "payment_method": "CASH",
     },
     "issuer": {
         "nit": "900123456",
-        "dv": "7",
+        "dv": "8",
         "name": "Example Issuer SAS",
         "additional_account_id": "1",
         "address": "Street 10 #20-30",
@@ -30,6 +58,8 @@ DOCUMENT_SUBMISSION_INVOICE_EXAMPLE = {
         "department_name": "Bogota D.C.",
         "country_code": "CO",
         "tax_level_code": "O-47",
+        "tax_scheme_id": "01",
+        "tax_scheme_name": "IVA",
         "economic_activity": "4752",
         "phone": "3001234567",
         "email": "billing@example-issuer.test",
@@ -46,10 +76,19 @@ DOCUMENT_SUBMISSION_INVOICE_EXAMPLE = {
         "department_code": "11",
         "department_name": "Bogota D.C.",
         "country_code": "CO",
+        "additional_account_id": "1",
+        "tax_level_code": "R-99-PN",
+        "tax_scheme_id": "01",
+        "tax_scheme_name": "IVA",
     },
     "resolution": {
         "number": "18764000001",
         "prefix": "FDK",
+        "date": "2026-01-01",
+        "range_from": 1,
+        "range_to": 999999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-12-31",
     },
     "totals": {
         "subtotal": 100000,
@@ -86,6 +125,7 @@ DOCUMENT_SUBMISSION_INVOICE_EXAMPLE = {
         "technical_key": "technical-key-demo-001",
         "test_set_id": "test-set-demo-001",
         "return_xml_artifact": True,
+        "file_sequence": 1,
     },
 }
 
@@ -94,7 +134,7 @@ DOCUMENT_SUBMISSION_POS_EXAMPLE = {
     "document": {
         "number": "POS000001",
         "type": "DOCUMENTO_EQUIVALENTE_POS",
-        "issue_date": "2026-03-12",
+        "issue_date": TODAY,
         "issue_time": "10:15:30-05:00",
         "payment_method": "CARD",
         "point_of_sale": {
@@ -113,6 +153,11 @@ DOCUMENT_SUBMISSION_POS_EXAMPLE = {
     "resolution": {
         "number": "18764000002",
         "prefix": "POS",
+        "date": "2026-01-01",
+        "range_from": 1,
+        "range_to": 999999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-12-31",
     },
     "totals": {
         "subtotal": 42000,
@@ -136,6 +181,7 @@ DOCUMENT_SUBMISSION_POS_EXAMPLE = {
         "software_id": "software-demo-id",
         "software_pin": "pin-demo-001",
         "test_set_id": "test-set-demo-001",
+        "file_sequence": 1,
     },
 }
 
@@ -144,7 +190,7 @@ DOCUMENT_SUBMISSION_CREDIT_NOTE_EXAMPLE = {
     "document": {
         "number": "NC000001",
         "type": "NOTA_CREDITO",
-        "issue_date": "2026-03-13",
+        "issue_date": TODAY,
         "issue_time": "09:00:00-05:00",
         "payment_method": "CASH",
     },
@@ -152,10 +198,10 @@ DOCUMENT_SUBMISSION_CREDIT_NOTE_EXAMPLE = {
         "document_number": "800199436",
         "document_type": "NIT",
         "name": "Empresa Ejemplo S.A.S.",
-    },
-    "resolution": {
-        "number": "18764000001",
-        "prefix": "NC",
+        "additional_account_id": "1",
+        "tax_level_code": "R-99-PN",
+        "tax_scheme_id": "01",
+        "tax_scheme_name": "IVA",
     },
     "totals": {
         "subtotal": 50000,
@@ -165,6 +211,7 @@ DOCUMENT_SUBMISSION_CREDIT_NOTE_EXAMPLE = {
     "line_items": [
         {
             "description": "Tornillo hexagonal 1/4 x 1 zinc",
+            "item_code": "TOR-001",
             "quantity": 100,
             "unit_price": 500,
             "line_total": 50000,
@@ -177,11 +224,13 @@ DOCUMENT_SUBMISSION_CREDIT_NOTE_EXAMPLE = {
         "referenced_document_key": "ref-doc-key-demo",
         "referenced_issue_date": "2026-03-12",
         "reason": "Devolucion parcial",
+        "response_code": "1",
     },
     "submission_options": {
         "software_id": "software-demo-id",
         "software_pin": "pin-demo-001",
         "test_set_id": "test-set-demo-001",
+        "file_sequence": 1,
     },
 }
 
@@ -190,7 +239,7 @@ DOCUMENT_SUBMISSION_DEBIT_NOTE_EXAMPLE = {
     "document": {
         "number": "ND000001",
         "type": "NOTA_DEBITO",
-        "issue_date": "2026-03-13",
+        "issue_date": TODAY,
         "issue_time": "11:00:00-05:00",
         "payment_method": "CASH",
     },
@@ -198,10 +247,10 @@ DOCUMENT_SUBMISSION_DEBIT_NOTE_EXAMPLE = {
         "document_number": "800199436",
         "document_type": "NIT",
         "name": "Empresa Ejemplo S.A.S.",
-    },
-    "resolution": {
-        "number": "18764000001",
-        "prefix": "ND",
+        "additional_account_id": "1",
+        "tax_level_code": "R-99-PN",
+        "tax_scheme_id": "01",
+        "tax_scheme_name": "IVA",
     },
     "totals": {
         "subtotal": 10000,
@@ -211,6 +260,7 @@ DOCUMENT_SUBMISSION_DEBIT_NOTE_EXAMPLE = {
     "line_items": [
         {
             "description": "Ajuste por intereses",
+            "item_code": "AJU-001",
             "quantity": 1,
             "unit_price": 10000,
             "line_total": 10000,
@@ -229,17 +279,51 @@ DOCUMENT_SUBMISSION_DEBIT_NOTE_EXAMPLE = {
         "software_id": "software-demo-id",
         "software_pin": "pin-demo-001",
         "test_set_id": "test-set-demo-001",
+        "file_sequence": 1,
     },
 }
+
+def _combined_payment_example(methods: list[str]) -> dict[str, Any]:
+    payload: dict[str, Any] = deepcopy(DOCUMENT_SUBMISSION_INVOICE_EXAMPLE)
+    payload["document"].pop("payment_method")
+    payload["document"].update(payment_methods=methods, payment_form="CONTADO")
+    payload["line_items"] = [{
+        "description": "Material vendido por metro", "item_code": "MT-1", "unit_code": "MTR",
+        "quantity": "3.333", "unit_price": "840.34", "line_total": "2801.00",
+        "taxes": [{"tax_type": "IVA_19", "taxable_amount": "2801.00", "amount": "532.00"}],
+    }]
+    payload["totals"] = {"subtotal": "2801.00", "tax_total": "532.00", "total": "3333.00"}
+    payload["submission_options"]["prepare_only"] = True
+    return payload
+
+
+COMBINED_CASH_DEBIT_EXAMPLE = _combined_payment_example(["CASH", "DEBIT_CARD"])
+COMBINED_CASH_TRANSFER_EXAMPLE = _combined_payment_example(["CASH", "TRANSFER"])
+COMBINED_DEBIT_CREDIT_EXAMPLE = _combined_payment_example(["DEBIT_CARD", "CREDIT_CARD"])
 
 DOCUMENT_SUBMISSION_REQUEST_EXAMPLES = [
     DOCUMENT_SUBMISSION_INVOICE_EXAMPLE,
     DOCUMENT_SUBMISSION_POS_EXAMPLE,
     DOCUMENT_SUBMISSION_CREDIT_NOTE_EXAMPLE,
     DOCUMENT_SUBMISSION_DEBIT_NOTE_EXAMPLE,
+    COMBINED_CASH_DEBIT_EXAMPLE,
+    COMBINED_CASH_TRANSFER_EXAMPLE,
+    COMBINED_DEBIT_CREDIT_EXAMPLE,
 ]
 
 DOCUMENT_SUBMISSION_OPENAPI_EXAMPLES = {
+    "efectivo_debito_iva_cop": {
+        "summary": "Efectivo y tarjeta debito; IVA conservado en COP enteros",
+        "value": COMBINED_CASH_DEBIT_EXAMPLE,
+    },
+    "efectivo_transferencia": {
+        "summary": "Efectivo y transferencia",
+        "value": COMBINED_CASH_TRANSFER_EXAMPLE,
+    },
+    "debito_credito": {
+        "summary": "Dos tarjetas; venta de contado",
+        "value": COMBINED_DEBIT_CREDIT_EXAMPLE,
+    },
     "factura_electronica": {
         "summary": "Factura electronica de venta",
         "description": "Ejemplo completo para FE con cliente identificado.",
@@ -283,7 +367,7 @@ DOCUMENT_SUBMISSION_RESPONSE_EXAMPLE = {
     },
     "artifacts": {
         "xml_base64": SIGNED_XML_BASE64,
-        "xml_filename": "ws_FDK000001.xml",
+        "xml_filename": "fv09001234560002600000001.xml",
     },
 }
 
@@ -313,22 +397,31 @@ ATTACHED_DOCUMENT_REQUEST_EXAMPLE = {
     "document_number": "FDK000001",
     "document_type_code": "01",
     "issuer_nit": "900123456",
+    "issuer_dv": "8",
     "issuer_name": "Example Issuer SAS",
+    "issuer_tax_level_code": "O-47",
     "receiver_name": "Cliente Demo SAS",
+    "receiver_nit": "800199436",
+    "receiver_dv": "4",
+    "receiver_document_type": "31",
+    "receiver_tax_level_code": "R-99-PN",
     "receiver_email": "facturas@cliente.test",
     "reply_to_email": "billing@example-issuer.test",
     "company_name": "Example Issuer SAS",
     "business_line": "Ferreteria y materiales",
     "invoice_xml_base64": INVOICE_XML_BASE64,
-    "invoice_xml_filename": "ws_FDK000001.xml",
+    "invoice_xml_filename": "fv09001234560002600000001.xml",
+    "application_response_xml_base64": DIAN_AR_XML_BASE64,
+    "application_response_xml_filename": "ar09001234560002600000001.xml",
     "issue_date": "2026-04-01",
+    "issue_time": "14:30:00-05:00",
     "cufe": DOCUMENT_KEY_EXAMPLE,
-    "validation_result_code": "02",
+    "file_sequence": 1,
 }
 
 ATTACHED_DOCUMENT_RESPONSE_EXAMPLE = {
-    "xml_filename": "ad_FDK000001.xml",
-    "zip_filename": "ad_FDK000001.zip",
+    "xml_filename": "ad09001234560002600000001.xml",
+    "zip_filename": "ad09001234560002600000001.zip",
     "content_base64": ZIP_BASE64_EXAMPLE,
 }
 
@@ -379,10 +472,12 @@ NUMBERING_RANGE_LOOKUP_RESPONSE_EXAMPLE = {
 
 HEALTH_RESPONSE_EXAMPLE = {
     "status": "ok",
-    "version": "0.1.0a0",
+    "version": "0.2.0a0",
     "dian_environment": "habilitacion",
     "certificate_loaded": True,
     "certificate_valid_until": "2027-12-31T23:59:59+00:00",
+    "certificate_days_remaining": 472,
+    "certificate_expiring_soon": False,
 }
 
 ERROR_503_EXAMPLE = {
@@ -418,6 +513,7 @@ EMIT_EVENT_ACKNOWLEDGEMENT_EXAMPLE = {
     "submission_options": {
         "software_id": "software-demo-id",
         "software_pin": "pin-demo-001",
+        "file_sequence": 1,
     },
 }
 
@@ -440,6 +536,7 @@ EMIT_EVENT_GOODS_RECEIPT_EXAMPLE = {
     "submission_options": {
         "software_id": "software-demo-id",
         "software_pin": "pin-demo-001",
+        "file_sequence": 2,
     },
 }
 
@@ -456,6 +553,7 @@ EMIT_EVENT_CLAIM_EXAMPLE = {
     "submission_options": {
         "software_id": "software-demo-id",
         "software_pin": "pin-demo-001",
+        "file_sequence": 3,
     },
 }
 
@@ -493,9 +591,9 @@ EMIT_EVENT_RESPONSE_EXAMPLE = {
     },
     "artifacts": {
         "application_response_xml_base64": APPLICATION_RESPONSE_XML_BASE64,
-        "application_response_xml_filename": "ar_030_SETP990000123.xml",
+        "application_response_xml_filename": "ar09001234560002600000001.xml",
         "dian_response_xml_base64": DIAN_EVENT_RESPONSE_XML_BASE64,
-        "dian_response_xml_filename": "dian_030_SETP990000123.xml",
+        "dian_response_xml_filename": "dian_ar09001234560002600000001.xml",
     },
 }
 

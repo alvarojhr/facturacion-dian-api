@@ -6,8 +6,8 @@ verdict.
 
 The service is stateless, like the rest of this API: it neither keeps the
 event sequence nor enforces the DIAN ordering ``030 → 032 → (033 | 031)``.
-Both belong to the caller — events consume no DIAN numbering range, so a retry
-may safely resend the very same document.
+Both belong to the caller. Events consume no DIAN numbering range; an uncertain
+retry must resend the persisted signed XML and its original timestamp.
 """
 
 from __future__ import annotations
@@ -22,16 +22,22 @@ from facturacion_dian_api.core.dian.client import DianClient
 from facturacion_dian_api.core.dian.envelope import zip_and_encode
 from facturacion_dian_api.core.dian.response_parser import DianResponse
 from facturacion_dian_api.core.errors import CertificateConfigurationError, ConfigurationError
+from facturacion_dian_api.core.filenames import build_dian_filename
 from facturacion_dian_api.core.models import (
     EventArtifacts,
     EventSubmissionResult,
     EventSubmitRequest,
 )
 from facturacion_dian_api.core.signing.certificate import get_certificate_bundle
-from facturacion_dian_api.core.signing.xades import COLOMBIA_TZ, sign_document_xml
+from facturacion_dian_api.core.signing.xades import (
+    COLOMBIA_TZ,
+    sign_document_xml,
+    verify_document_signature,
+)
 from facturacion_dian_api.core.xml.application_response_builder import (
     build_application_response_xml,
 )
+from lxml import etree
 
 logger = logging.getLogger(__name__)
 
@@ -56,11 +62,8 @@ def _resolve_event_number(req: EventSubmitRequest) -> str:
     DIAN accepts once anyway — and identical across retries of the same event,
     so a retry keeps the same consecutive.
 
-    Note this does not make the *CUDE* stable across retries: the event
-    re-stamps its date/time from the clock on each call to satisfy rule AAD09e
-    (issue date = signing date), and the timestamp feeds the CUDE seed. A retry
-    is a freshly signed document with the same event number but a new CUDE,
-    which is correct for RADIAN — events consume no numbering range.
+    For an uncertain retry, the caller also sends the persisted signed XML and
+    original timestamp so the service resends the exact same event and CUDE.
     """
     explicit = (req.event_number or "").strip()
     if explicit:
@@ -82,6 +85,8 @@ def _validate_event_config(req: EventSubmitRequest) -> None:
 
     if req.event_type == "031" and not req.claim_cause_code:
         raise ConfigurationError("Event 031 (reclamo) requires claim_cause_code (01-04)")
+    if req.event_type == "032" and req.receiver_person is None:
+        raise ConfigurationError("Event 032 requires receiver_person")
 
 
 def _collect_messages(dian_response: DianResponse) -> list[str]:
@@ -98,11 +103,10 @@ def _collect_messages(dian_response: DianResponse) -> list[str]:
 class EventSubmissionService:
     """Application service that builds, signs and registers RADIAN events.
 
-    Returns ``ACCEPTED``/``REJECTED`` only: those are DIAN's functional
-    verdicts and both travel as HTTP 200 (AGENTS.md § 7). The third status of
-    the public contract, ``FAILED``, is what a caller records when the call
-    itself fails — this service raises ``DianTimeoutError``/``DianUpstreamError``
-    for that and the HTTP layer maps them to 504/502.
+    DIAN's functional ``ACCEPTED``/``REJECTED`` verdicts travel as HTTP 200.
+    Responses without a final verdict preserve ``RECEIVED``, ``PENDING``,
+    ``UNKNOWN`` or ``ERROR``. Transport exceptions are mapped to 504/502 by
+    the HTTP layer.
     """
 
     async def emit_event(self, req: EventSubmitRequest) -> EventSubmissionResult:
@@ -113,8 +117,9 @@ class EventSubmissionService:
         # La regla AAD09e rechaza el evento si esas fechas no coinciden, por eso
         # el servicio las estampa en vez de aceptarlas del llamador.
         now = colombia_now()
-        issue_date = now.date().isoformat()
-        issue_time = now.strftime("%H:%M:%S") + "-05:00"
+        issue_date = req.event_issue_date or now.date().isoformat()
+        issue_time = req.event_issue_time or (now.strftime("%H:%M:%S") + "-05:00")
+        signing_time = datetime.fromisoformat(f"{issue_date}T{issue_time}")
         event_number = _resolve_event_number(req)
 
         cude = calculate_event_cude(
@@ -137,17 +142,53 @@ class EventSubmissionService:
             req.document_number,
         )
 
-        xml_root = build_application_response_xml(req, cude, event_number, issue_date, issue_time)
+        if req.signed_event_xml_base64:
+            try:
+                signed_xml = base64.b64decode(req.signed_event_xml_base64, validate=True)
+                signed_root = etree.fromstring(
+                    signed_xml,
+                    parser=etree.XMLParser(resolve_entities=False, no_network=True),
+                )
+                parsed_cude = signed_root.xpath(
+                    "string(/*[local-name()='ApplicationResponse']/*[local-name()='UUID'])"
+                )
+                parsed_event = signed_root.xpath(
+                    "string(//*[local-name()='DocumentResponse']/*[local-name()='Response']/*[local-name()='ResponseCode'])"
+                )
+                parsed_document = signed_root.xpath(
+                    "string(//*[local-name()='DocumentReference']/*[local-name()='ID'])"
+                )
+                parsed_number = signed_root.xpath(
+                    "string(/*[local-name()='ApplicationResponse']/*[local-name()='ID'])"
+                )
+                if (
+                    parsed_event != req.event_type
+                    or parsed_document != req.document_number
+                    or parsed_number != event_number
+                    or parsed_cude != cude
+                ):
+                    raise ValueError("signed event does not match the fiscal retry request")
+                verify_document_signature(signed_root, get_certificate_bundle())
+            except (ValueError, etree.XMLSyntaxError) as exc:
+                raise ConfigurationError(f"Invalid signed_event_xml_base64: {exc}") from exc
+        else:
+            xml_root = build_application_response_xml(req, cude, event_number, issue_date, issue_time)
+            try:
+                bundle = get_certificate_bundle()
+                signed_xml = sign_document_xml(xml_root, bundle, signing_time)
+            except FileNotFoundError as exc:
+                raise CertificateConfigurationError(str(exc)) from exc
+            except ValueError as exc:
+                raise CertificateConfigurationError(str(exc)) from exc
 
-        try:
-            bundle = get_certificate_bundle()
-            signed_xml = sign_document_xml(xml_root, bundle)
-        except FileNotFoundError as exc:
-            raise CertificateConfigurationError(str(exc)) from exc
-        except ValueError as exc:
-            raise CertificateConfigurationError(str(exc)) from exc
-
-        xml_filename = f"ar_{req.event_type}_{req.document_number}.xml"
+        xml_filename = build_dian_filename(
+            family="ar",
+            issuer_nit=settings.company.nit,
+            provider_code=req.file_provider_code,
+            document_number=event_number,
+            issue_date=issue_date,
+            sequence=req.file_sequence,
+        )
         _, content_b64 = zip_and_encode(xml_filename, signed_xml)
 
         environment = req.environment or settings.dian.environment
@@ -163,14 +204,14 @@ class EventSubmissionService:
                 else None
             ),
             dian_response_xml_filename=(
-                f"dian_{req.event_type}_{req.document_number}.xml"
+                f"dian_{xml_filename}"
                 if dian_response.xml_bytes is not None
                 else None
             ),
         )
 
         return EventSubmissionResult(
-            status="ACCEPTED" if dian_response.is_accepted else "REJECTED",
+            status=dian_response.processing_status.upper(),  # type: ignore[arg-type]
             cude=cude,
             tracking_id=dian_response.tracking_id,
             messages=_collect_messages(dian_response),

@@ -79,6 +79,7 @@ class DianResponse:
     """Parsed DIAN SOAP response."""
 
     is_valid: bool = False
+    validation_result_present: bool = False
     status_code: str = ""
     status_description: str = ""
     status_message: str = ""
@@ -97,15 +98,59 @@ class DianResponse:
 
     @property
     def is_accepted(self) -> bool:
-        return self.is_test_set_accepted or (self.is_valid and self.status_code in ("00", ""))
+        return self.is_test_set_accepted or (
+            self.validation_result_present
+            and self.is_valid
+            and self.status_code in ("00", "")
+        )
 
     @property
     def is_rejected(self) -> bool:
-        return self.is_test_set_rejected or (not self.is_valid and not self.is_test_set_accepted)
+        return self.is_test_set_rejected or (
+            self.validation_result_present and not self.is_valid and not self.is_test_set_accepted
+        )
+
+    @property
+    def is_error(self) -> bool:
+        """Return true for a technical DIAN response without a fiscal verdict."""
+        if self.validation_result_present or self.is_test_set_accepted or self.is_test_set_rejected:
+            return False
+        searchable = f"{self.status_description} {self.status_message}".lower()
+        return bool(self.error_messages) or self.status_code in {"90", "99"} or any(
+            marker in searchable
+            for marker in ("fault", "error", "failed", "no recognized result")
+        )
+
+    @property
+    def processing_status(self) -> str:
+        """Normalize DIAN's sync and async responses without inventing acceptance."""
+        if self.is_accepted:
+            return "accepted"
+        if self.is_rejected:
+            return "rejected"
+        if self.is_error:
+            return "error"
+        searchable = f"{self.status_description} {self.status_message}".lower()
+        if any(
+            phrase in searchable
+            for phrase in (
+                "en proceso",
+                "procesando",
+                "validación en curso",
+                "validacion en curso",
+                "pendiente",
+            )
+        ):
+            return "pending"
+        if self.tracking_id:
+            return "received"
+        return "unknown"
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "is_valid": self.is_valid,
+            "validation_result_present": self.validation_result_present,
+            "processing_status": self.processing_status,
             "status_code": self.status_code,
             "status_description": self.status_description,
             "status_message": self.status_message,
@@ -200,6 +245,7 @@ def parse_send_bill_response(response_xml: bytes) -> DianResponse:
 
     is_valid_text = _first_text_by_local_name(result_el, "IsValid")
     if is_valid_text is not None:
+        result.validation_result_present = True
         result.is_valid = is_valid_text.lower() == "true"
 
     status_code = _first_text_by_local_name(result_el, "StatusCode")
@@ -235,10 +281,9 @@ def parse_send_bill_response(response_xml: bytes) -> DianResponse:
             result.xml_bytes = None
 
     if result.tracking_id and not result.error_messages and not result.status_message:
-        result.is_valid = True
         if not result.status_description:
             result.status_description = "Documento recibido por DIAN"
-        result.status_message = "Documento enviado correctamente a DIAN"
+        result.status_message = "Documento recibido; la validación DIAN sigue pendiente"
 
     return result
 

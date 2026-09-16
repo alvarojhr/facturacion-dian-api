@@ -1,5 +1,10 @@
 # Guia de integracion HTTP
 
+La ampliación local de `0.2.0a0` incorpora `document.payment_methods` y conserva
+el IVA informado dentro de las tolerancias fiscales. Consulte la
+[política de pagos y redondeos](pagos-combinados-y-tolerancias-020.md), sus
+ejemplos y la exclusión entre `payment_method` y `payment_methods`.
+
 `facturacion-dian-api` expone una API HTTP estable para integrarse desde ERP, POS y backends.
 
 Base URL local por defecto:
@@ -12,7 +17,7 @@ http://localhost:8000
 
 | Metodo | Ruta | Proposito |
 | --- | --- | --- |
-| `POST` | `/api/v1/documents/submissions` | Enviar factura, POS, nota credito o nota debito |
+| `POST` | `/api/v1/documents/submissions` | Preparar o enviar factura, POS, notas, ajustes DEE y contingencias |
 | `GET` | `/api/v1/documents/submissions/{tracking_id}` | Consultar estado funcional en DIAN |
 | `POST` | `/api/v1/attached-documents` | Construir ZIP interoperable AttachedDocument |
 | `POST` | `/api/v1/customers/lookup` | Consultar adquiriente en DIAN |
@@ -24,6 +29,8 @@ http://localhost:8000
 ## Envio de documentos
 
 Usa siempre `POST /api/v1/documents/submissions`. El tipo documental cambia dentro de `document.type`.
+
+La fecha de un documento nuevo debe ser la fecha actual de Colombia. Facturas y documentos equivalentes requieren resolución completa y vigente. Las notas pueden omitirla cuando usan su consecutivo interno. Revisa la [migración fiscal de septiembre de 2026](migracion-contrato-fiscal-2026-09.md).
 
 Ejemplos canonicos:
 
@@ -67,10 +74,20 @@ curl --request POST "http://localhost:8000/api/v1/documents/submissions" `
 ## Consulta de estado
 
 ```powershell
-curl "http://localhost:8000/api/v1/documents/submissions/2c6c3df3-6301-4170-9e1e-a2441a8b5d5e"
+curl "http://localhost:8000/api/v1/documents/submissions/2c6c3df3-6301-4170-9e1e-a2441a8b5d5e?environment=habilitacion"
 ```
 
+Un `ZipKey` confirma recepción, no aceptación. Continúa consultando mientras el estado sea `received` o `pending`. Los estados finales fiscales son `accepted` y `rejected`; `unknown` y `error` requieren reconciliación operativa.
+
+## Preparar, persistir y transmitir
+
+En la primera llamada usa `submission_options.prepare_only=true`. Persiste `artifacts.xml_base64`, `artifacts.xml_filename`, CUFE/CUDE, ambiente y `file_sequence`. Repite el mismo payload con esos dos campos como `signed_xml_base64` y `signed_xml_filename` para transmitir exactamente el XML persistido.
+
+Este flujo evita reconstruir otro documento después de un timeout. La API verifica la firma, el número y la clave fiscal antes de reutilizar el artifact.
+
 ## AttachedDocument
+
+El request recibe el documento firmado por el emisor y el `ApplicationResponse` firmado por DIAN. El AR debe contener respuesta `02` y referenciar el mismo número y CUFE/CUDE. El servicio toma del AR el resultado, fecha y hora de validación, construye el contenedor y lo firma.
 
 Payload canonico:
 
@@ -162,15 +179,15 @@ Puntos a tener en cuenta:
   viaja la contraparte (`supplier_nit`, `supplier_name`).
 - **El endpoint es stateless.** El orden obligatorio `030 -> 032 -> (033 | 031)`
   y la ventana de reclamo los controla el integrador.
-- **Los eventos no consumen numeracion DIAN**, asi que un reintento reenvia el
-  mismo documento. Envia `event_number` (tu consecutivo por tipo de evento); si
-  lo omites se deriva del CUFE referenciado y el CUDE se mantiene estable entre
-  reintentos.
+- **Los eventos no consumen numeracion DIAN.** Reserva `event_number` y
+  `file_sequence` antes del intento. Ante un resultado incierto, reenvia
+  `signed_event_xml_base64`, `event_issue_date` y `event_issue_time` para
+  conservar exactamente el mismo XML y CUDE.
 - **`receiver_person`**: DIAN lo exige para el evento `032` y lo valida en
   `030`/`033`. Envialo siempre que conozcas a la persona que recibio.
-- `status` es `ACCEPTED` o `REJECTED`; ambos llegan como `200`. Un fallo de
-  transporte sale como `502`/`504` y es el integrador quien lo registra como
-  `FAILED`.
+- `status` distingue `RECEIVED`, `PENDING`, `ACCEPTED`, `REJECTED`, `UNKNOWN`
+  y `ERROR`. Los resultados funcionales llegan como `200`; los fallos de
+  transporte salen como `502`/`504`.
 - `artifacts` trae dos XML que hay que retener por separado: el
   `ApplicationResponse` firmado por ti y la respuesta firmada por DIAN.
 
@@ -180,7 +197,7 @@ Puntos a tener en cuenta:
 - `503`: falta configuracion local o el certificado no esta disponible o es invalido.
 - `502`: DIAN o el transporte devolvieron una falla upstream.
 - `504`: DIAN no respondio a tiempo.
-- `200` con `status=accepted|rejected`: DIAN proceso la solicitud y devolvio resultado funcional.
+- `200`: la respuesta incluye el estado real de preparación, recepción, proceso o resultado fiscal.
 
 ## Campos clave del request
 
@@ -189,11 +206,11 @@ Puntos a tener en cuenta:
   cada campo ausente cae al `COMPANY_*` equivalente. Sin `name` se conserva el
   contrato legacy (`nit`, `dv`, `software_owner_nit`).
 - `buyer`: datos del adquiriente.
-- `resolution`: numeracion autorizada.
-- `totals`: subtotal, impuestos y total.
-- `line_items`: lineas comerciales.
+- `resolution`: numeracion autorizada completa en factura y documento equivalente; opcional en notas.
+- `totals`: subtotal, impuestos, retenciones, descuentos/cargos, anticipos, redondeo y pagable.
+- `line_items`: lineas comerciales con código, valores y uno o varios tributos explícitos.
 - `references`: requerido para notas.
-- `submission_options`: credenciales y parametros runtime DIAN.
+- `submission_options`: credenciales, consecutivo técnico anual y control de preparación/reintento.
 - `client_reference`: correlacion opaca del caller.
 
 ## Campos clave de la respuesta
@@ -207,3 +224,5 @@ Puntos a tener en cuenta:
 - `messages`
 - `dian_response`
 - `artifacts`
+
+`artifacts` es evidencia fiscal, no telemetría. Persiste el XML firmado del emisor y el AR firmado por DIAN en campos separados.
