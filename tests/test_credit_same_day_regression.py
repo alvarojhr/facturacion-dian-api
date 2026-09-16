@@ -1,7 +1,6 @@
 """Regresión compartida con la recuperación de facturas del ERP del 2026-09-15."""
 
 import pytest
-
 from facturacion_dian_api.core.payments import PaymentDetails
 
 

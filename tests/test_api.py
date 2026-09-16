@@ -80,6 +80,40 @@ class TestDocumentSubmit:
         assert data["artifacts"]["xml_filename"] == "fv09001234560002600000001.xml"
         assert data["client_reference"] == "client-ref-001"
 
+    def test_rejects_credit_without_due_date(
+        self,
+        client: TestClient,
+        sample_invoice_payload: dict,
+    ) -> None:
+        sample_invoice_payload["document"] = {
+            **sample_invoice_payload["document"],
+            "payment_method": None,
+            "payment_form": "CREDITO",
+            "payment_methods": ["TRANSFER"],
+        }
+        response = client.post("/api/v1/documents/submissions", json=sample_invoice_payload)
+        assert response.status_code == 422
+
+    def test_rejects_credit_for_final_consumer(
+        self,
+        client: TestClient,
+        sample_invoice_payload: dict,
+    ) -> None:
+        sample_invoice_payload["document"] = {
+            **sample_invoice_payload["document"],
+            "payment_method": None,
+            "payment_form": "CREDITO",
+            "payment_methods": ["CREDIT"],
+            "payment_due_date": "2030-04-12",
+        }
+        sample_invoice_payload["buyer"] = {
+            "document_number": "222222222222",
+            "document_type": "FINAL_CONSUMER",
+            "name": "Consumidor Final",
+        }
+        response = client.post("/api/v1/documents/submissions", json=sample_invoice_payload)
+        assert response.status_code == 422
+
     def test_submit_accepts_and_maps_complete_body_owned_issuer(
         self,
         client: TestClient,
@@ -145,7 +179,10 @@ class TestDocumentSubmit:
             "issuer_phone": issuer["phone"],
             "issuer_email": issuer["email"],
         }
-        assert client.post("/api/v1/documents/submissions", json=sample_invoice_payload).status_code == 200
+        assert (
+            client.post("/api/v1/documents/submissions", json=sample_invoice_payload).status_code
+            == 200
+        )
 
     def test_submit_pos_document_returns_cude(
         self,
@@ -253,9 +290,7 @@ class TestDocumentSubmit:
         monkeypatch.setattr(DianClient, "send_test_set_async", fake_submit_with_ar)
         monkeypatch.setattr(DianClient, "send_bill_sync", fake_submit_with_ar)
 
-        response = client.post(
-            "/api/v1/documents/submissions", json=sample_invoice_payload
-        )
+        response = client.post("/api/v1/documents/submissions", json=sample_invoice_payload)
         assert response.status_code == 200
         artifacts = response.json()["artifacts"]
         # Ambos artefactos presentes: emisor + DIAN
@@ -276,9 +311,7 @@ class TestDocumentSubmit:
         """
         # La fixture global stub_live_dian_calls devuelve una DianResponse sin
         # xml_bytes, lo cual representa el escenario de habilitación asíncrona.
-        response = client.post(
-            "/api/v1/documents/submissions", json=sample_invoice_payload
-        )
+        response = client.post("/api/v1/documents/submissions", json=sample_invoice_payload)
         assert response.status_code == 200
         artifacts = response.json()["artifacts"]
         assert artifacts["xml_base64"] is not None  # XML del emisor siempre
@@ -356,6 +389,63 @@ class TestDocumentStatus:
             == b"<AppResponse>ok</AppResponse>"
         )
         assert data["artifacts"]["application_response_xml_filename"] == "ar_track-xml.xml"
+
+    def test_status_returns_document_key_and_qr_url_when_dian_reports_them(
+        self,
+        client: TestClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Una consulta de estado debe bastar para reconciliar un envio cuyo acuse se
+        perdio: DIAN reporta la clave del documento en XmlDocumentKey, asi que se
+        expone igual que en el envio (document_key + qr_url). Sin esto el llamador
+        tendria que recalcular el CUFE, y el recalculo da OTRA clave si el reintento
+        se firmo con otra marca de tiempo (la hora entra en la semilla).
+        """
+        document_key = "c" * 96
+
+        async def fake_status(self: DianClient, tracking_id: str) -> DianResponse:
+            del self
+            return DianResponse(
+                is_valid=True,
+                status_code="00",
+                status_description="Procesado Correctamente.",
+                status_message="Documento autorizado.",
+                tracking_id=tracking_id,
+                document_key=document_key,
+            )
+
+        monkeypatch.setattr(DianClient, "get_status_zip", fake_status)
+        monkeypatch.setattr(DianClient, "get_status", fake_status)
+        response = client.get("/api/v1/documents/submissions/track-key?environment=produccion")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["document_key"] == document_key
+        assert data["qr_url"] == (
+            f"https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey={document_key}"
+        )
+
+    def test_status_without_document_key_reports_none(
+        self,
+        client: TestClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Sin clave reportada no se inventa ninguna (ni un qr_url a medias)."""
+
+        async def fake_status(self: DianClient, tracking_id: str) -> DianResponse:
+            del self
+            return DianResponse(
+                is_valid=False,
+                status_code="99",
+                status_description="Document not found.",
+                tracking_id=tracking_id,
+            )
+
+        monkeypatch.setattr(DianClient, "get_status_zip", fake_status)
+        monkeypatch.setattr(DianClient, "get_status", fake_status)
+        data = client.get("/api/v1/documents/submissions/track-none").json()
+        assert data["document_key"] is None
+        assert data["qr_url"] is None
 
 
 class TestAttachedDocument:
@@ -619,7 +709,9 @@ class TestEmitEvent:
                 validation_result_present=True,
                 status_code="99",
                 status_description="Documento con errores",
-                error_messages=["Regla: AAD06, Rechazo: el valor UUID no esta correctamente calculado"],
+                error_messages=[
+                    "Regla: AAD06, Rechazo: el valor UUID no esta correctamente calculado"
+                ],
                 tracking_id="event-track-err",
                 xml_bytes=b"<ApplicationResponse>dian</ApplicationResponse>",
             )

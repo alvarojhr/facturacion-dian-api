@@ -382,6 +382,8 @@ class DocumentSubmissionRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_fiscal_consistency(self) -> DocumentSubmissionRequest:
+        if self.document.payment_form == "CREDITO" and self.buyer.document_type == "FINAL_CONSUMER":
+            raise ValueError("CREDITO no está permitido para consumidor final")
         note_types = {
             "NOTA_CREDITO",
             "NOTA_DEBITO",

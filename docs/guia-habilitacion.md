@@ -5,11 +5,18 @@ Usa esta guia para validar la conectividad y el flujo funcional con DIAN antes d
 ## Requisitos minimos
 
 - `DIAN_ENVIRONMENT=habilitacion`
+- `DIAN_LOOKUP_ENVIRONMENT=produccion`
 - `DIAN_SOFTWARE_ID`
 - `DIAN_SOFTWARE_PIN`
 - `DIAN_TEST_SET_ID`
 - certificado y password
 - datos del emisor y resolucion consistentes
+
+`DIAN_LOOKUP_ENVIRONMENT` es la excepcion deliberada: el registro de
+adquirientes (`GetAcquirer`) solo responde en produccion. Si lo dejas caer a
+`habilitacion`, vpfe-hab devuelve el sobre `GetAcquirerResponse` con HTTP 404 y
+`POST /api/v1/customers/lookup` falla con 502 para cualquier documento. Firmar y
+enviar siguen usando `DIAN_ENVIRONMENT`.
 
 ## Flujo recomendado
 

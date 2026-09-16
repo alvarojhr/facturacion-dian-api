@@ -14,8 +14,7 @@ RUN apt-get update \
 # terceros se resuelve con pip-compile/uv y los hashes se verifican en build.
 COPY requirements.lock /app/requirements.lock
 
-RUN python -m pip install --upgrade pip \
-    && python -m pip install --no-deps --require-hashes -r /app/requirements.lock
+RUN python -m pip install --no-deps --require-hashes -r /app/requirements.lock
 
 COPY packages/core /app/packages/core
 COPY packages/server /app/packages/server

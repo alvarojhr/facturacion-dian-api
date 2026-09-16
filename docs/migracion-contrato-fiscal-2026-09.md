@@ -1,6 +1,12 @@
 # Migración del contrato fiscal 0.2.0a0 de septiembre de 2026
 
-La revisión `0.2.0a0` endurece el contrato HTTP para impedir que un payload ambiguo llegue a firma o a DIAN. FE, FerreteriaPinki y cualquier otro consumidor deben migrar como una actualización incompatible del contrato.
+La revisión `0.2.0a0` endurece el contrato HTTP para impedir que un payload ambiguo llegue a firma o a DIAN. Cada consumidor debe migrar como una actualización incompatible del contrato.
+
+La imagen se publica en la línea OCI `v2`, separada de la versión Python/HTTP
+`0.2.0a0`. Conserva `latest` en la línea anterior. El despliegue automático del
+consumidor requiere `DOWNSTREAM_HTTP_CONTRACT=0.2.0a0` en este repositorio,
+únicamente después de validar su migración. Un consumidor puede fijar el digest
+de v2 en un servicio separado sin activar ese dispatch global.
 
 ## Cambios obligatorios
 
@@ -27,7 +33,7 @@ en línea y agregado; hasta 5 COP sólo si el IVA informado es su aproximación
 al múltiplo de diez más cercano. Se mantienen exactas las sumas contables y se
 conservan los importes recibidos. El caso base 2801 / IVA 532 está cubierto.
 
-Consultar la [política completa, ejemplos y cambios del adaptador Pinki](pagos-combinados-y-tolerancias-020.md)
+Consultar la [política completa, ejemplos y cambios del adaptador](pagos-combinados-y-tolerancias-020.md)
 antes de retirar los bloqueos del consumidor.
 
 El formato antiguo de un impuesto por línea sigue disponible mediante `tax_type` y `tax_amount`. Para varios tributos use `taxes`:

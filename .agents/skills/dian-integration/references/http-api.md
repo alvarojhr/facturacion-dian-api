@@ -37,6 +37,11 @@ Campos principales de la respuesta:
 - `dian_response`
 - `artifacts`
 
+La consulta de estado devuelve el mismo modelo: si DIAN ya proceso el documento,
+`document_key` trae la clave (CUFE/CUDE) que ella misma reporta y `qr_url` la URL
+del catalogo. Reconciliar un envio cuyo acuse se perdio no exige recalcular el
+CUFE (recalcularlo daria otra clave si el reintento se firmo con otra hora).
+
 ## Eventos RADIAN del receptor
 
 `POST /api/v1/events` registra los eventos que emite quien **recibe** la factura:

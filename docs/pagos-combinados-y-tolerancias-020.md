@@ -104,7 +104,7 @@ con signo, debido a la diferencia entre el total calculado y la suma de
 parciales. No modifica base ni IVA ni evita sus validaciones. No se crea para
 compensar un IVA rechazado, un descuento o un cargo comercial.
 
-## Caso FerreteriaPinki
+## Ejemplo de venta en pesos enteros
 
 Precio comercial con IVA incluido: 1.000 COP; cantidad: 3.333; cobro: 3.333 COP.
 El contrato recibe precio **neto**, base e IVA separados:
@@ -135,9 +135,9 @@ Los XML de factura, POS y notas, CUFE/CUDE y artefactos de respuesta usan los
 importes aprobados. La preparación no transmite. Los reintentos entregan los
 bytes firmados persistidos, sin nueva firma.
 
-## Cambios posteriores en el adaptador de FerreteriaPinki
+## Migración de adaptadores
 
-No se modificó el ERP en esta tarea. Para retirar sus bloqueos:
+Un adaptador anterior debe revisar estos puntos:
 
 La etiqueta `0.2.0a0` ya existía antes de esta ampliación local. Verificar las
 huellas de los wheels del informe y ejecutar los ejemplos nuevos contra el
