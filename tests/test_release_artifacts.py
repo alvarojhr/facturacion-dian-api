@@ -7,7 +7,7 @@ import json
 import runpy
 from pathlib import Path
 from types import SimpleNamespace
-from zipfile import ZipFile
+from zipfile import ZipFile, ZipInfo
 
 import pytest
 
@@ -107,3 +107,27 @@ def test_self_consistent_bundle_still_needs_the_approved_manifest(release_bundle
     approved.write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises(ValueError, match="Bundle differs from the approved"):
         VERIFY(artifact, runtime=True)
+
+
+def test_build_normalizes_only_generated_metadata_and_zip_attributes(tmp_path):
+    canonicalize = runpy.run_path(
+        str(Path(__file__).resolve().parents[1] / "scripts/build_reproducible_wheels.py"),
+    )["canonicalize_wheel"]
+    paths = [tmp_path / "windows.whl", tmp_path / "linux.whl"]
+    code = b"# Preserve even deliberate CRLF in source\r\nvalue = 1\r\n"
+    for path, system, newline in zip(paths, (0, 3), (b"\r\n", b"\n"), strict=True):
+        with ZipFile(path, "w") as archive:
+            for name, content in {
+                "package/module.py": code,
+                "package.dist-info/METADATA": b"Name: package" + newline,
+                "package.dist-info/RECORD": b"old record",
+            }.items():
+                info = ZipInfo(name)
+                info.create_system = system
+                info.external_attr = (0o100666 if system == 0 else 0o100644) << 16
+                archive.writestr(info, content)
+        canonicalize(path, 1789881926)
+    assert paths[0].read_bytes() == paths[1].read_bytes()
+    with ZipFile(paths[0]) as archive:
+        assert archive.read("package/module.py") == code
+        assert b"old record" not in archive.read("package.dist-info/RECORD")

@@ -131,11 +131,11 @@ escritas en el código: todo se genera en tiempo de ejecución. Y si un escáner
 secretos salta, **el arreglo nunca es reformatear el material para que no lo
 detecte** — eso es esquivar el control, no resolverlo.
 
-> Ojo con la trampa del entorno: CI instala con `pip install -e` desde los
-> `pyproject.toml`, que llevan restricciones `>=`, así que las pruebas corren
-> contra la **última** versión publicada. El `Dockerfile` instala desde
-> `requirements.lock`. Producción y CI no ejecutan la misma versión, y ninguna
-> alerta lo dice: al validar un bump, mira siempre el lock.
+> CI y la imagen instalan las dependencias de runtime desde `requirements.lock`
+> con hashes y `--no-deps`. La instalación editable se limita al desarrollo y las
+> pruebas de código; la imagen instala wheels y verifica sus bytes. Mantén esta
+> separación: instalar otra vez desde restricciones `>=` podría cambiar la pila
+> de firma sin modificar el lock.
 
 Hay un caso que este repo **no** puede probar solo: los `.p12` cifrados con
 RC2-40 que todavía emite alguna autoridad de certificación. `cryptography` no
