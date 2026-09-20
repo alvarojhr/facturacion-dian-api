@@ -9,6 +9,12 @@ de TaxLevelCode del comprador**: no se acreditó una representación oficial de
 «desconocido» para AE28, que es obligatorio. Este build no resuelve esa dependencia
 ni acredita aceptación DIAN real.
 
+La revisión posterior distingue ese bloqueo del contenedor de las modalidades
+de entrega por representación gráfica permitidas para adquirentes que no son
+facturadores electrónicos. No permite deducir esa condición de un perfil fiscal
+incompleto. Véanse el [informe focalizado de AE28](auditorias/2026-09-19-ae28-entrega-comprador.md)
+y la [consulta técnica preparada para DIAN](auditorias/2026-09-19-consulta-dian-ae28.md).
+
 Se propone `0.2.0a1`, siguiente alfa de los paquetes core/server. El servidor fija
 core exactamente a esa versión. Los artefactos `0.2.0a0` se conservan; la versión
 Python es independiente de las etiquetas OCI `v1.*`. No hay publicación ni despliegue.
