@@ -22,7 +22,7 @@ el árbol de paquetes, el lock, herramientas, fecha y hashes de los 41 archivos.
 | `facturacion_dian_api_core-0.2.0a2-py3-none-any.whl` | `8e09f8eefb981296f325803d9238ba6735d6456d5041bcecb2bc2e0e327f2ba4` |
 | `facturacion_dian_api_server-0.2.0a2-py3-none-any.whl` | `2f0bdc11af98550ca6e824e0f86fe4181759e3dde80f02fc5f1e9c76c726fdc0` |
 
-Imagen local: `facturacion-dian-api:verified-020a2-6d9d486a`.
+Imagen local: repositorio `facturacion-dian-api`, etiqueta `verified-020a2-6d9d486a`.
 ID local: `sha256:3f953b18d3ba53c04ff6d42379d8bc3333589984ad06fada63874d91631bb389`.
 `RepoDigests=[]`: **todavía no hay digest publicado**. Ese ID no es una referencia
 de registro utilizable para desplegar en otro entorno.
