@@ -121,7 +121,7 @@ def _build_dian_extensions(root: etree._Element, req: EventSubmitRequest, event_
         listSchemeURI="urn:oasis:names:specification:ubl:codelist:gc:CountryIdentificationCode-2.1",
     )
 
-    software_owner_nit = settings.company.nit
+    software_owner_nit = req.issuer.nit if req.issuer else settings.company.nit
     software_provider = _sub(dian_ext, sts("SoftwareProvider"))
     _sub(
         software_provider,
@@ -267,10 +267,10 @@ def build_application_response_xml(
     sender = _sub(root, cac("SenderParty"))
     _party_tax_scheme(
         sender,
-        registration_name=settings.company.name,
-        company_id=settings.company.nit,
-        verification_digit=settings.company.dv or compute_nit_dv(settings.company.nit),
-        organization_type=settings.company.additional_account_id,
+        registration_name=req.issuer.name if req.issuer else settings.company.name,
+        company_id=req.issuer.nit if req.issuer else settings.company.nit,
+        verification_digit=req.issuer.dv if req.issuer else settings.company.dv or compute_nit_dv(settings.company.nit),
+        organization_type=req.issuer.additional_account_id if req.issuer else settings.company.additional_account_id,
     )
 
     receiver = _sub(root, cac("ReceiverParty"))

@@ -243,6 +243,12 @@ reales — no los corras como parte del flujo normal.
 
 ## 11. Eventos RADIAN: la semilla del CUDE es distinta
 
+HTTP `0.2.0a3` añade `prepare_only` (sin SOAP), `reconcile_only` (GetStatus
+por CUDE original, sin envío) e identidad `issuer` por petición. Preservar los
+bytes, nombre y fecha del evento preparado. Al reconciliar, una clave distinta
+o ausente queda UNKNOWN. La primera firma acepta fecha explícita sólo del día
+colombiano; el reenvío conserva la original. Ver `docs/eventos-recuperables-020a3.md`.
+
 `core/cufe/calculator.py` tiene **tres** funciones de hash y son incompatibles
 entre sí. La del evento (`calculate_event_cude`, Anexo Técnico FEV v1.9 § 11.5,
 idéntica al Anexo RADIAN v1.1 § 12.1.1) es:

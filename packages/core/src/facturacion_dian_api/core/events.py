@@ -28,6 +28,7 @@ from facturacion_dian_api.core.models import (
     EventSubmissionResult,
     EventSubmitRequest,
 )
+from facturacion_dian_api.core.runtime_config import compute_nit_dv
 from facturacion_dian_api.core.signing.certificate import get_certificate_bundle
 from facturacion_dian_api.core.signing.xades import (
     COLOMBIA_TZ,
@@ -75,13 +76,19 @@ def _validate_event_config(req: EventSubmitRequest) -> None:
     required = {
         "software_id": (req.software_id or settings.dian.software_id).strip(),
         "software_pin": (req.software_pin or settings.dian.software_pin).strip(),
-        "company_nit": settings.company.nit.strip(),
-        "company_name": settings.company.name.strip(),
+        "company_nit": req.issuer.nit if req.issuer else settings.company.nit.strip(),
+        "company_name": req.issuer.name.strip() if req.issuer else settings.company.name.strip(),
     }
     missing = [name for name, value in required.items() if not value]
     if missing:
         joined = ", ".join(sorted(missing))
         raise ConfigurationError(f"Missing required event settings: {joined}")
+    if req.issuer and req.issuer.dv != compute_nit_dv(req.issuer.nit):
+        raise ConfigurationError("Event issuer DV does not match its NIT")
+    if req.prepare_only and req.reconcile_only:
+        raise ConfigurationError("prepare_only and reconcile_only are mutually exclusive")
+    if req.reconcile_only and not req.signed_event_xml_base64:
+        raise ConfigurationError("Reconciliation requires the original signed event")
 
     if req.event_type == "031" and not req.claim_cause_code:
         raise ConfigurationError("Event 031 (reclamo) requires claim_cause_code (01-04)")
@@ -117,6 +124,10 @@ class EventSubmissionService:
         # La regla AAD09e rechaza el evento si esas fechas no coinciden, por eso
         # el servicio las estampa en vez de aceptarlas del llamador.
         now = colombia_now()
+        if not req.signed_event_xml_base64 and req.event_issue_date and req.event_issue_date != now.date().isoformat():
+            raise ConfigurationError("First event preparation must use today's Colombian date")
+        if req.signed_event_xml_base64 and (not req.event_issue_date or not req.event_issue_time):
+            raise ConfigurationError("A signed event requires its original timestamp")
         issue_date = req.event_issue_date or now.date().isoformat()
         issue_time = req.event_issue_time or (now.strftime("%H:%M:%S") + "-05:00")
         signing_time = datetime.fromisoformat(f"{issue_date}T{issue_time}")
@@ -127,7 +138,7 @@ class EventSubmissionService:
                 num_de=event_number,
                 fec_emi=issue_date,
                 hor_emi=issue_time,
-                nit_fe=settings.company.nit,
+                nit_fe=req.issuer.nit if req.issuer else settings.company.nit,
                 doc_adq=req.supplier_nit,
                 response_code=req.event_type,
                 document_id=req.document_number,
@@ -145,6 +156,8 @@ class EventSubmissionService:
         if req.signed_event_xml_base64:
             try:
                 signed_xml = base64.b64decode(req.signed_event_xml_base64, validate=True)
+                if b"<!DOCTYPE" in signed_xml.upper() or b"<!ENTITY" in signed_xml.upper():
+                    raise ValueError("DTD/entity declarations are not permitted")
                 signed_root = etree.fromstring(
                     signed_xml,
                     parser=etree.XMLParser(resolve_entities=False, no_network=True),
@@ -169,6 +182,17 @@ class EventSubmissionService:
                 ):
                     raise ValueError("signed event does not match the fiscal retry request")
                 verify_document_signature(signed_root, get_certificate_bundle())
+                # Compare every fiscal leaf and attribute, including reference CUFE,
+                # environment, parties, receiver person and claim. CUDE alone does
+                # not cover all of those fields.
+                expected_root = build_application_response_xml(req, cude, event_number, issue_date, issue_time)
+                for expected in expected_root.iter():
+                    if len(expected) == 0 and (expected.text or expected.attrib):
+                        path = expected_root.getroottree().getpath(expected)
+                        actual = signed_root.xpath(path, namespaces={k: v for k, v in expected_root.nsmap.items() if k})
+                        if (not isinstance(actual, list) or len(actual) != 1 or not isinstance(actual[0], etree._Element)
+                                or actual[0].text != expected.text or actual[0].attrib != expected.attrib):
+                            raise ValueError("signed event does not match the original fiscal fields")
             except (ValueError, etree.XMLSyntaxError) as exc:
                 raise ConfigurationError(f"Invalid signed_event_xml_base64: {exc}") from exc
         else:
@@ -183,17 +207,31 @@ class EventSubmissionService:
 
         xml_filename = build_dian_filename(
             family="ar",
-            issuer_nit=settings.company.nit,
+            issuer_nit=req.issuer.nit if req.issuer else settings.company.nit,
             provider_code=req.file_provider_code,
             document_number=event_number,
             issue_date=issue_date,
             sequence=req.file_sequence,
         )
+        if req.signed_event_xml_filename and req.signed_event_xml_filename != xml_filename:
+            raise ConfigurationError("Signed event filename does not match the reserved file sequence")
+        artifacts = EventArtifacts(
+            application_response_xml_base64=base64.b64encode(signed_xml).decode("ascii"),
+            application_response_xml_filename=xml_filename,
+        )
+        if req.prepare_only:
+            return EventSubmissionResult(
+                status="PREPARED", cude=cude, artifacts=artifacts,
+                client_reference=req.client_reference,
+            )
         _, content_b64 = zip_and_encode(xml_filename, signed_xml)
 
         environment = req.environment or settings.dian.environment
         client = DianClient(endpoint_url=resolve_wsdl_url(environment))
-        dian_response = await client.send_event_update_status(content_b64)
+        # SendEventUpdateStatus is synchronous in both environments. Its original
+        # CUDE identifies the event for GetStatus; this branch never retransmits.
+        dian_response = (await client.get_status(cude) if req.reconcile_only
+                         else await client.send_event_update_status(content_b64))
 
         artifacts = EventArtifacts(
             application_response_xml_base64=base64.b64encode(signed_xml).decode("ascii"),
@@ -210,8 +248,11 @@ class EventSubmissionService:
             ),
         )
 
+        status = dian_response.processing_status.upper()
+        if req.reconcile_only and dian_response.document_key != cude:
+            status = "UNKNOWN"
         return EventSubmissionResult(
-            status=dian_response.processing_status.upper(),  # type: ignore[arg-type]
+            status=status,  # type: ignore[arg-type]
             cude=cude,
             tracking_id=dian_response.tracking_id,
             messages=_collect_messages(dian_response),

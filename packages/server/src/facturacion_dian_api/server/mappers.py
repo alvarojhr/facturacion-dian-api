@@ -9,6 +9,7 @@ from facturacion_dian_api.core.models import (
     DocumentLine,
     DocumentSubmissionResult,
     DocumentSubmitRequest,
+    EventIssuer,
     EventReceiverPerson,
     EventSubmissionResult,
     EventSubmitRequest,
@@ -194,6 +195,10 @@ def to_core_event_request(req: EmitEventRequest) -> EventSubmitRequest:
 
     return EventSubmitRequest(
         event_type=req.event_type,
+        issuer=EventIssuer.model_validate(req.issuer.model_dump()) if req.issuer else None,
+        prepare_only=options.prepare_only,
+        reconcile_only=options.reconcile_only,
+        signed_event_xml_filename=options.signed_event_xml_filename,
         environment=req.environment,
         software_id=options.software_id,
         software_pin=options.software_pin,

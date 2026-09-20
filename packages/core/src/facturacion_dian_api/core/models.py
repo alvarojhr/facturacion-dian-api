@@ -52,7 +52,7 @@ TaxType = Literal[
 # implementa: lo registra el emisor, no el adquiriente.
 EventType = Literal["030", "031", "032", "033"]
 ClaimCauseCode = Literal["01", "02", "03", "04"]
-EventStatus = Literal["RECEIVED", "PENDING", "ACCEPTED", "REJECTED", "UNKNOWN", "ERROR"]
+EventStatus = Literal["PREPARED", "RECEIVED", "PENDING", "ACCEPTED", "REJECTED", "UNKNOWN", "ERROR"]
 
 
 class AllowanceCharge(BaseModel):
@@ -522,10 +522,23 @@ class EventReceiverPerson(BaseModel):
     organization_department: str | None = None
 
 
+class EventIssuer(BaseModel):
+    """Complete sender identity used by the event builder, owned by the caller."""
+
+    nit: str = Field(pattern=r"^\d{1,15}$")
+    dv: str = Field(pattern=r"^\d$")
+    name: str = Field(min_length=1)
+    additional_account_id: Literal["1", "2"]
+
+
 class EventSubmitRequest(BaseModel):
     """Flattened RADIAN event request used internally by the domain layer."""
 
     event_type: EventType
+    issuer: EventIssuer | None = None
+    prepare_only: bool = False
+    reconcile_only: bool = False
+    signed_event_xml_filename: str | None = None
     environment: Environment | None = None
     software_id: str | None = None
     software_pin: str | None = None

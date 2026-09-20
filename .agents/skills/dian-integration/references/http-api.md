@@ -64,8 +64,11 @@ Campos de la respuesta: `status` (`PREPARED`, `RECEIVED`, `PENDING`,
 
 Reglas que el integrador debe recordar:
 
-- La identidad de quien emite el evento sale de las variables `COMPANY_*` del
-  despliegue, no del request.
+- En HTTP `0.2.0a3`, envía `issuer` con NIT, DV, nombre y tipo de persona.
+  Omitirlo conserva el fallback histórico `COMPANY_*` del despliegue.
+- Prepara con `submission_options.prepare_only=true`, persiste XML/CUDE/nombre
+  y transmite con `signed_event_xml_base64` y `signed_event_xml_filename`.
+  Ante incertidumbre, `reconcile_only=true` consulta el CUDE sin retransmitir.
 - El endpoint es stateless: el orden `030 -> 032 -> (033 | 031)` y la ventana de
   reclamo son responsabilidad del integrador.
 - Los eventos no consumen numeracion DIAN. El integrador debe conservar el XML

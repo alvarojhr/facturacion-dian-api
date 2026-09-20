@@ -176,9 +176,10 @@ curl --request POST "http://localhost:8000/api/v1/events" `
 
 Puntos a tener en cuenta:
 
-- **La identidad de quien emite el evento sale de las variables `COMPANY_*` del
-  despliegue**, no del request: un despliegue = un emisor. En el cuerpo solo
-  viaja la contraparte (`supplier_nit`, `supplier_name`).
+- **Identidad del emisor:** desde `0.2.0a3`, envía `issuer` con `nit`, `dv`,
+  `name` y `additional_account_id` (`1` jurídica, `2` natural). Se valida el DV.
+  Omitir el bloque conserva el fallback histórico `COMPANY_*`; el certificado
+  sigue siendo único por despliegue y debe corresponder al emisor.
 - **El endpoint es stateless.** El orden obligatorio `030 -> 032 -> (033 | 031)`
   y la ventana de reclamo los controla el integrador.
 - **Los eventos no consumen numeracion DIAN.** Reserva `event_number` y
@@ -187,11 +188,32 @@ Puntos a tener en cuenta:
   conservar exactamente el mismo XML y CUDE.
 - **`receiver_person`**: DIAN lo exige para el evento `032` y lo valida en
   `030`/`033`. Envialo siempre que conozcas a la persona que recibio.
-- `status` distingue `RECEIVED`, `PENDING`, `ACCEPTED`, `REJECTED`, `UNKNOWN`
+- `status` distingue `PREPARED`, `RECEIVED`, `PENDING`, `ACCEPTED`, `REJECTED`, `UNKNOWN`
   y `ERROR`. Los resultados funcionales llegan como `200`; los fallos de
   transporte salen como `502`/`504`.
 - `artifacts` trae dos XML que hay que retener por separado: el
   `ApplicationResponse` firmado por ti y la respuesta firmada por DIAN.
+
+### Preparación recuperable de eventos (HTTP 0.2.0a3)
+
+1. Reserva y guarda número, secuencia, identidad y fecha/hora de Bogotá del día.
+   Envía `submission_options.prepare_only=true` con `event_issue_date` y
+   `event_issue_time`. El estado `PREPARED` devuelve CUDE y XML sin llamar a DIAN.
+2. Persiste los bytes, hash, CUDE y nombre de archivo antes de enviar.
+3. Repite con `prepare_only=false`, `signed_event_xml_base64` y
+   `signed_event_xml_filename`, manteniendo todos los campos originales.
+   La API verifica firma, campos fiscales y nombre antes de transmitir esos bytes.
+4. Si la transmisión queda incierta, repite el mismo cuerpo firmado con
+   `reconcile_only=true`. Consulta `GetStatus` por el CUDE original, también en
+   habilitación porque el envío de eventos es síncrono. Nunca retransmite.
+   Un resultado cuya clave no coincida queda `UNKNOWN`; no prueba ausencia ni
+   habilita otra firma. Si DIAN todavía no confirma, conserva la incertidumbre
+   y vuelve a consultar o diagnostica; no convierte un timeout en rechazo.
+
+Una respuesta perdida durante la preparación puede repetirse porque esa fase
+no transmite. Una preparación sin XML que quedó de otro día requiere revisión;
+la API rechaza fechar retrospectivamente la primera firma. Los eventos firmados
+conservan su fecha aunque se consulten o envíen otro día.
 
 ## Politica HTTP
 
