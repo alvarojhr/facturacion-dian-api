@@ -1,10 +1,10 @@
 {
-  "commit": "6d9d486a79b78066b3189e91582f3f8438e2ca9c",
-  "package_tree": "ef310f738cde96536536917380d3426827fe0cc9",
-  "source_date_epoch": 1789882348,
+  "commit": "cd74fc9f87e0fe70ebe290ba2f8098ba179b71e7",
+  "package_tree": "14fca58ebd74176f8662287f38392d3b77951e89",
+  "source_date_epoch": 1789927294,
   "versions": {
-    "core": "0.2.0a2",
-    "server": "0.2.0a2"
+    "core": "0.2.0a3",
+    "server": "0.2.0a3"
   },
   "build_tools": {
     "setuptools": "80.9.0",
@@ -15,8 +15,8 @@
   "wheel_format": "canonical-zip-v1",
   "requirements_lock_sha256": "b1dae1ec2d51b4c2de2308b4eb68ff344ef160e0a9aaafe4a7809a87148ac8ec",
   "sha256": {
-    "facturacion_dian_api_core-0.2.0a2-py3-none-any.whl": "8e09f8eefb981296f325803d9238ba6735d6456d5041bcecb2bc2e0e327f2ba4",
-    "facturacion_dian_api_server-0.2.0a2-py3-none-any.whl": "2f0bdc11af98550ca6e824e0f86fe4181759e3dde80f02fc5f1e9c76c726fdc0"
+    "facturacion_dian_api_core-0.2.0a3-py3-none-any.whl": "a0b115a4ea50a92dc48197494206e267e6e299afdf8878efaa3fcda3e9bc93b4",
+    "facturacion_dian_api_server-0.2.0a3-py3-none-any.whl": "67d5efdbef033eb63d570cbc0d6b0bcbbc843642e69423b2f97faf61c09f1fcb"
   },
   "repeated_build_identical": true,
   "committed_source_sha256": {
@@ -30,9 +30,9 @@
     "packages/core/src/facturacion_dian_api/core/dian/envelope.py": "551fb03ac53704df183beb867092c50ddecf1e04aefbc47fdfe578638fed2a9e",
     "packages/core/src/facturacion_dian_api/core/dian/response_parser.py": "b39da4da28c53bfdf066f7d2dfbdb08e343081f93e5398c31b5dc4c4bd8ffe87",
     "packages/core/src/facturacion_dian_api/core/errors.py": "9597c83b061d58b1bfb0caea5b45517c025420832b918d222ce8ef57b420fb6d",
-    "packages/core/src/facturacion_dian_api/core/events.py": "b0e4d4210c2ac58c6d8cb822a32c6a3ffd2aa9e529d470e46fcd03990c3fe77d",
+    "packages/core/src/facturacion_dian_api/core/events.py": "7b9f9e1648efa136b1525b8787266e315a55b7b63dfba1ab9290f632e48bd718",
     "packages/core/src/facturacion_dian_api/core/filenames.py": "15d398b63b6c2bd6dde6ad6d3739ec589223111beacb7ab30df4eb6e5d0bd8d3",
-    "packages/core/src/facturacion_dian_api/core/models.py": "bee4a774c9f25fadbeca65267af264c2e3356ba247851580a838ec8f2356e1fd",
+    "packages/core/src/facturacion_dian_api/core/models.py": "779b6d1c6aad79b26f6e5b15e91c672fdaf70edc2f79bba1afabff653882c13e",
     "packages/core/src/facturacion_dian_api/core/monetary.py": "c52e4f5b6e7f3aa7fa8ef58e18c8950b3e4a56c97ec3d314eefd6aab3e15b389",
     "packages/core/src/facturacion_dian_api/core/payments.py": "494f82e16d4cd1eaa1164aac51804743415cd233c0b3f385463c9cd4eee8be0d",
     "packages/core/src/facturacion_dian_api/core/runtime_config.py": "733ab06f7edb62b622a31508920ff8009ce4774d4f7a043f9a7799753564aba5",
@@ -42,7 +42,7 @@
     "packages/core/src/facturacion_dian_api/core/signing/xades.py": "5f546c0655d10c4dd08d9f08419bb90a26c4e34920b19b15cc3775ddd30b42fc",
     "packages/core/src/facturacion_dian_api/core/submission.py": "a2710541bb53105aed8a17a6367122113c90f5ae5863e406f9e8a574d7e3caac",
     "packages/core/src/facturacion_dian_api/core/xml/__init__.py": "1a09e8ae0901fb30622294911b1f7460583ce65fc19e038aab90c1937699efed",
-    "packages/core/src/facturacion_dian_api/core/xml/application_response_builder.py": "7a1d4610e6b2a130734bcb2c5112c2f5bbb1b3534b640f020e066e00834ae379",
+    "packages/core/src/facturacion_dian_api/core/xml/application_response_builder.py": "3482cbe70ccde21addcaa692d7246578fe8b349028d29a3845767a702b52481f",
     "packages/core/src/facturacion_dian_api/core/xml/attached_document_builder.py": "efa4ffa84c35900b62d66384409bb9322e3fdc1817b3be32c587a11735b83805",
     "packages/core/src/facturacion_dian_api/core/xml/common.py": "19649264846602e93101833e06a3fff5e67273475f07b9d305790161a429f826",
     "packages/core/src/facturacion_dian_api/core/xml/credit_note_builder.py": "283c856167b64bf2d44307c6ff42b3923cbb383f1f69b7ce9465a0fd2a9794c4",
@@ -54,12 +54,12 @@
     "packages/server/src/facturacion_dian_api/server/api/customers.py": "bf4f57c05fb83030342abf8676435afe6021e9a74afaa70247763869235ea607",
     "packages/server/src/facturacion_dian_api/server/api/documents.py": "800c00fe0f3d1a26e5e6c46e41e866a8157718d818970852cedc34bafa9ce47d",
     "packages/server/src/facturacion_dian_api/server/api/events.py": "2be9385e32d005c489ca254045446759f8552d1e145165b0d0ce514d5e3b2a86",
-    "packages/server/src/facturacion_dian_api/server/api/health.py": "2a6e2544af7af52587cbff3000161ea3d255a8cdb74914c86428553824be7290",
+    "packages/server/src/facturacion_dian_api/server/api/health.py": "482ebc3fa84d71fe6607e01fded93df944bfda7509471d9522b28935ed128c31",
     "packages/server/src/facturacion_dian_api/server/api/numbering_ranges.py": "536086b07638aa51338e674709b0162fc40fbc4e6ef8d3c441c20ecca53c7b01",
-    "packages/server/src/facturacion_dian_api/server/app.py": "a6691b4f9d96fed220a9e6076fd2afde87a72d2a1a94020d8ae0745a49d8aa67",
-    "packages/server/src/facturacion_dian_api/server/contracts.py": "514eb0e39784f2c94ca6d19de1b44d4a592297fd8b913134f8713802e3dfb8d6",
-    "packages/server/src/facturacion_dian_api/server/examples.py": "a678b6ec8b5b4fbdcd6d553af46f79fca270fc67fc79820f741c52f0a4d66fb6",
-    "packages/server/src/facturacion_dian_api/server/mappers.py": "0dcd006c93fe26f558b71a81d42e45e16f80c8996ba89e06a22b5811aa681354",
+    "packages/server/src/facturacion_dian_api/server/app.py": "a2c390f653818e3063e68fabc3316bccbb303c5c39b9bac89edc6fb08611592e",
+    "packages/server/src/facturacion_dian_api/server/contracts.py": "5bb81de6bfe308ce9e2146cce8bce2a787ba25f6ea80ce8e2e1af4c9f1b4cbe2",
+    "packages/server/src/facturacion_dian_api/server/examples.py": "e5bc4a186a939421801d063233df7f3f031d23098cde6befd43f56a7ffdae085",
+    "packages/server/src/facturacion_dian_api/server/mappers.py": "bd39b210722e368f8a5660b03bb839122393daf2146f869fa4770c8eb129b76e",
     "packages/server/src/facturacion_dian_api/server/settings.py": "eac5680d297af4a22d397ae08d1a49855c0e3b027ee4426c8a364363ff4fd2eb"
   }
 }
