@@ -160,6 +160,13 @@ def main() -> int:
         issue_time=invoice_value("IssueTime"),
         invoice_xml_base64=base64.b64encode(etree.tostring(invoice)).decode("ascii"),
     )
+    # Container assertions must describe this exact signed document.
+    for role, target in (("Supplier", "issuer"), ("Customer", "receiver")):
+        path = (f"/*/*[local-name()='Accounting{role}Party']/*[local-name()='Party']"
+                "/*[local-name()='PartyTaxScheme']")
+        for field, xpath in (("name", "RegistrationName"), ("nit", "CompanyID"), ("tax_level_code", "TaxLevelCode")):
+            attached_payload[f"{target}_{field}"] = str(invoice.xpath(f"string({path}/*[local-name()='{xpath}'])"))
+        attached_payload[f"{target}_dv"] = str(invoice.xpath(f"string({path}/*[local-name()='CompanyID']/@schemeID)")) or None
 
     dian_response = deepcopy(event_roots[0][1])
     dian_response.xpath(

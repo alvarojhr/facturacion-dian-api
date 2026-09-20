@@ -31,6 +31,8 @@ python scripts/validate_skill.py
 python -m ruff check .
 python -m mypy packages/core/src packages/server/src
 python -m pytest
+python -m pip install --no-deps --require-hashes -r requirements-build.lock
+python scripts/build_reproducible_wheels.py
 docker build -t facturacion-dian-api .
 ```
 
@@ -129,11 +131,11 @@ escritas en el código: todo se genera en tiempo de ejecución. Y si un escáner
 secretos salta, **el arreglo nunca es reformatear el material para que no lo
 detecte** — eso es esquivar el control, no resolverlo.
 
-> Ojo con la trampa del entorno: CI instala con `pip install -e` desde los
-> `pyproject.toml`, que llevan restricciones `>=`, así que las pruebas corren
-> contra la **última** versión publicada. El `Dockerfile` instala desde
-> `requirements.lock`. Producción y CI no ejecutan la misma versión, y ninguna
-> alerta lo dice: al validar un bump, mira siempre el lock.
+> CI y la imagen instalan las dependencias de runtime desde `requirements.lock`
+> con hashes y `--no-deps`. La instalación editable se limita al desarrollo y las
+> pruebas de código; la imagen instala wheels y verifica sus bytes. Mantén esta
+> separación: instalar otra vez desde restricciones `>=` podría cambiar la pila
+> de firma sin modificar el lock.
 
 Hay un caso que este repo **no** puede probar solo: los `.p12` cifrados con
 RC2-40 que todavía emite alguna autoridad de certificación. `cryptography` no
@@ -275,6 +277,16 @@ Otras trampas del `ApplicationResponse` (`core/xml/application_response_builder.
 - El `034` (aceptación tácita) **no se implementa**: lo registra el emisor.
 
 ## 12. Convenciones
+
+### Imagen y paquetes aprobados
+
+La imagen instala los wheels reproducidos desde `release/manifest.json`, nunca el
+checkout en modo editable. Se encontró una imagen con la versión correcta pero
+10 archivos Python con CRLF diferentes de los wheels aprobados. La comprobación
+`scripts/verify_release.py --runtime` compara bytes y rutas de importación: no
+normalices finales de línea para hacerla pasar. Genera una versión nueva cuando
+cambie el runtime aprobado; conserva los artefactos históricos. El procedimiento
+está en `docs/despliegue-020a2.md`.
 
 - **Idioma.** Documentación, README, `CONTRIBUTING.md` y PRs/commits: **español**
   (la voz pública del repo). Comentarios de código: el inglés es la norma existente

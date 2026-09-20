@@ -1,5 +1,7 @@
 # Guia de integracion HTTP
 
+La versión candidata `0.2.0a1` admite [compradores con datos fiscales desconocidos](compradores-parciales-020a1.md). Revise la política por familia y la dependencia pendiente de AE28 antes de activar la entrega electrónica.
+
 La ampliación local de `0.2.0a0` incorpora `document.payment_methods` y conserva
 el IVA informado dentro de las tolerancias fiscales. Consulte la
 [política de pagos y redondeos](pagos-combinados-y-tolerancias-020.md), sus

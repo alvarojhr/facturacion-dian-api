@@ -102,9 +102,22 @@ jobs:
           python -m pip install pip-audit
           python -m pip_audit -r requirements.lock
 
+      - name: Reproduce approved wheels
+        if: steps.changes.outputs.docs_only != 'true'
+        run: |
+          python -m venv /tmp/dian-build
+          /tmp/dian-build/bin/python -m pip install --no-deps --require-hashes -r requirements-build.lock
+          /tmp/dian-build/bin/python scripts/build_reproducible_wheels.py
+
       - name: Build Docker image
         if: steps.changes.outputs.docs_only != 'true'
         run: docker build -t facturacion-dian-api .
+
+      - name: Verify installed image bytes and HTTP health
+        if: steps.changes.outputs.docs_only != 'true'
+        run: |
+          docker run --rm --network none facturacion-dian-api python -I /opt/dian-release/verify_release.py --artifact-dir /opt/dian-release --runtime
+          docker run --rm --network none -v "$PWD/scripts/smoke_release.py:/tmp/smoke_release.py:ro" facturacion-dian-api python -I /tmp/smoke_release.py
 
       - name: Gitleaks
         if: steps.changes.outputs.docs_only != 'true'

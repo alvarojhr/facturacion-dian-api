@@ -71,6 +71,8 @@ def invoice_request() -> DocumentSubmitRequest:
         document_type="FACTURA_ELECTRONICA",
         customer_nit="800199436",
         customer_document_type="NIT",
+        customer_additional_account_id="1",
+        customer_tax_level_code="R-99-PN",
         customer_name="Empresa Ejemplo S.A.S.",
         customer_email="compras@ejemplo.com",
         customer_phone="3001234567",
@@ -220,6 +222,9 @@ def credit_note_request() -> DocumentSubmitRequest:
         invoice_number="SETT000001",
         document_type="NOTA_CREDITO",
         customer_nit="800199436",
+        customer_document_type="NIT",
+        customer_additional_account_id="1",
+        customer_tax_level_code="R-99-PN",
         customer_name="Empresa Ejemplo S.A.S.",
         issue_date="2026-03-13",
         issue_time="09:00:00-05:00",
@@ -257,6 +262,9 @@ def debit_note_request() -> DocumentSubmitRequest:
         invoice_number="SETT000001",
         document_type="NOTA_DEBITO",
         customer_nit="800199436",
+        customer_document_type="NIT",
+        customer_additional_account_id="1",
+        customer_tax_level_code="R-99-PN",
         customer_name="Empresa Ejemplo S.A.S.",
         issue_date="2026-03-13",
         issue_time="11:00:00-05:00",
@@ -969,7 +977,7 @@ class TestPosDocBuilder:
         # identificado: se emitia PhysicalLocation y un TaxLevelCode de
         # responsable, cuando 222222222222 es justamente el consumidor final.
         request = invoice_request.model_copy(
-            update={"customer_nit": "222222222222", "customer_document_type": "NIT"}
+            update={"customer_nit": "222222222222", "customer_document_type": "NIT", "customer_additional_account_id": "2"}
         )
         root = build_invoice_xml(request, FAKE_CUFE)
 
@@ -980,18 +988,10 @@ class TestPosDocBuilder:
         assert tax_level_code == "R-99-PN"
         assert not _xpath(root, "cac:AccountingCustomerParty/cac:Party/cac:PhysicalLocation")
 
-    def test_blank_nit_is_treated_as_final_consumer(
-        self, pos_request: DocumentSubmitRequest
-    ) -> None:
+    def test_blank_identifier_is_rejected(self, pos_request: DocumentSubmitRequest) -> None:
         request = pos_request.model_copy(update={"customer_nit": "   "})
-        root = build_invoice_xml(request, FAKE_CUFE)
-
-        identifier = _xpath(
-            root,
-            "cac:AccountingCustomerParty/cac:Party/cac:PartyIdentification/cbc:ID",
-        )[0]
-        # Un NIT en blanco no puede viajar como identificador del adquiriente.
-        assert identifier.text == "222222222222"
+        with pytest.raises(ValueError, match="document_number must not be blank"):
+            build_invoice_xml(request, FAKE_CUFE)
 
     def test_consumidor_final_registration_name_is_the_dian_literal(
         self, pos_request: DocumentSubmitRequest
@@ -1005,33 +1005,10 @@ class TestPosDocBuilder:
         )
         assert registration_name == "consumidor final"
 
-    def test_named_buyer_without_document_does_not_leak_name_into_tax_scheme(
-        self, pos_request: DocumentSubmitRequest
-    ) -> None:
-        # Un ERP con el cliente a medias (nombre si, documento no) caia en la rama
-        # de consumidor final y emitia un DE contradictorio: el identificador decia
-        # "adquiriente no identificado" y el nombre fiscal decia "Juan Perez".
-        request = pos_request.model_copy(
-            update={
-                "customer_nit": None,
-                "customer_document_type": "CC",
-                "customer_name": "Juan Perez",
-            }
-        )
-        root = build_invoice_xml(request, FAKE_CUFE)
-
-        assert (
-            _xpath_text(
-                root,
-                "cac:AccountingCustomerParty/cac:Party/cac:PartyTaxScheme/cbc:RegistrationName",
-            )
-            == "consumidor final"
-        )
-        # El nombre del llamador no se pierde: el anexo lo admite en PartyName/Name.
-        assert (
-            _xpath_text(root, "cac:AccountingCustomerParty/cac:Party/cac:PartyName/cbc:Name")
-            == "Juan Perez"
-        )
+    def test_identified_buyer_without_number_is_rejected(self, pos_request: DocumentSubmitRequest) -> None:
+        request = pos_request.model_copy(update={"customer_nit": None, "customer_document_type": "CC", "customer_name": "Juan Perez"})
+        with pytest.raises(ValueError, match="document_type and document_number"):
+            build_invoice_xml(request, FAKE_CUFE)
 
     def test_identified_buyer_keeps_its_own_registration_name(
         self, invoice_request: DocumentSubmitRequest

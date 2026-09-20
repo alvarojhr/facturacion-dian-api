@@ -5,6 +5,12 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import cast
 
+from facturacion_dian_api.core.buyer import (
+    resolve_buyer_identity,
+    validate_buyer_family,
+    validate_responsibilities,
+    validate_tax_scheme,
+)
 from facturacion_dian_api.core.config import settings
 from facturacion_dian_api.core.models import (
     AllowanceCharge,
@@ -64,7 +70,6 @@ CUSTOMER_DOCUMENT_SCHEME_NAMES = {
 }
 CUSTOMER_ADDITIONAL_ACCOUNT_IDS = {
     "FINAL_CONSUMER": "2",
-    "NIT": "1",
     "CC": "2",
     "CE": "2",
     "TI": "2",
@@ -471,8 +476,14 @@ def build_supplier_party(parent: etree._Element, prefix: str, req: DocumentSubmi
 def build_customer_party(parent: etree._Element, req: DocumentSubmitRequest) -> None:
     """Build cac:AccountingCustomerParty from request data."""
     customer = _sub(parent, cac("AccountingCustomerParty"))
-    customer_document_type = _normalize_customer_document_type(req)
-    is_final_consumer = _is_final_consumer_request(req, customer_document_type)
+    customer_document_type, person_type = resolve_buyer_identity(
+        req.customer_document_type, req.customer_nit,
+        req.customer_name, req.customer_additional_account_id,
+    )
+    responsibility = validate_responsibilities(req.customer_tax_level_code)
+    validate_tax_scheme(req.customer_tax_scheme_id, req.customer_tax_scheme_name)
+    validate_buyer_family(req.document_type, customer_document_type, responsibility)
+    is_final_consumer = customer_document_type == "FINAL_CONSUMER"
     buyer_identifier = (req.customer_nit or "").strip() or FINAL_CONSUMER_ID
     buyer_identifier_type = CUSTOMER_DOCUMENT_SCHEME_NAMES[customer_document_type]
     buyer_verification_digit = _compute_nit_dv(req.customer_nit) if customer_document_type == "NIT" else None
@@ -480,7 +491,7 @@ def build_customer_party(parent: etree._Element, req: DocumentSubmitRequest) -> 
     _sub(
         customer,
         cbc("AdditionalAccountID"),
-        req.customer_additional_account_id or CUSTOMER_ADDITIONAL_ACCOUNT_IDS[customer_document_type],
+        person_type,
     )
 
     party = _sub(customer, cac("Party"))
@@ -524,12 +535,8 @@ def build_customer_party(parent: etree._Element, req: DocumentSubmitRequest) -> 
         buyer_identifier,
         **_company_id_attrs(buyer_identifier_type, buyer_verification_digit),
     )
-    _sub(
-        tax_scheme_elem,
-        cbc("TaxLevelCode"),
-        _normalize_tax_level_code(req.customer_tax_level_code, default=FINAL_CONSUMER_TAX_LEVEL_CODE),
-        listName="05",
-    )
+    if responsibility is not None:
+        _sub(tax_scheme_elem, cbc("TaxLevelCode"), responsibility, listName="05")
 
     tax_address = _sub(tax_scheme_elem, cac("RegistrationAddress"))
     _build_customer_address(tax_address, req)
@@ -757,7 +764,10 @@ def build_invoice_line(
         _sub(price_node, cbc("PriceAmount"), _money(line.reference_price), currencyID=CURRENCY_COP)
         _sub(price_node, cbc("PriceTypeCode"), line.reference_price_type_code or "01")
 
-    build_allowance_charges(inv_line, line.allowance_charges)
+    # UBL InvoiceLine places adjustments before tax; both note line types place
+    # them after tax. Only node order changes, never the supplied amounts.
+    if tag_name == "InvoiceLine":
+        build_allowance_charges(inv_line, line.allowance_charges)
 
     for tax in line.taxes:
         definition = _tax_definition(tax)
@@ -796,6 +806,9 @@ def build_invoice_line(
         scheme = _sub(tax_cat, cac("TaxScheme"))
         _sub(scheme, cbc("ID"), str(definition["code"]))
         _sub(scheme, cbc("Name"), str(definition["name"]))
+
+    if tag_name in {"CreditNoteLine", "DebitNoteLine"}:
+        build_allowance_charges(inv_line, line.allowance_charges)
 
     item = _sub(inv_line, cac("Item"))
     _sub(item, cbc("Description"), line.description)

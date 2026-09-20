@@ -1,5 +1,7 @@
 # facturacion-dian-api
 
+La versión candidata `0.2.0a2` conserva el [contrato de compradores con datos fiscales desconocidos](docs/compradores-parciales-020a1.md), integra las correcciones vigentes y usa una [imagen verificable por hashes](docs/despliegue-020a2.md). La dependencia de entrega AE28 sigue abierta cuando el XML original no contiene responsabilidad fiscal.
+
 API HTTP de alto nivel para integrar facturacion electronica DIAN en Colombia.
 
 `facturacion-dian-api` esta pensado para equipos que necesitan conectar un ERP, un POS o cualquier backend propio con DIAN sin depender del lenguaje de programacion del sistema principal. El producto publico es la API HTTP; el resto del repo existe para implementar y operar esa API.
