@@ -1,6 +1,6 @@
 {
   "status": "ok",
-  "version": "0.2.0a1",
+  "version": "0.2.0a2",
   "dian_environment": "habilitacion",
   "certificate_loaded": true,
   "certificate_valid_until": "2027-12-31T23:59:59+00:00",

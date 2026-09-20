@@ -1,5 +1,9 @@
 # Compradores identificados con datos fiscales desconocidos — 0.2.0a1
 
+> Documento del contrato introducido en `0.2.0a1`. El candidato actual es
+> [`0.2.0a2`](despliegue-020a2.md): conserva esta política, integra las correcciones
+> de `main` y cambia los hashes de los paquetes. Los artefactos anteriores son históricos.
+
 ## Estado y alcance
 
 La API admite compradores identificados sin responsabilidades ni tributo conocidos

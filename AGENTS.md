@@ -31,6 +31,8 @@ python scripts/validate_skill.py
 python -m ruff check .
 python -m mypy packages/core/src packages/server/src
 python -m pytest
+python -m pip install --no-deps --require-hashes -r requirements-build.lock
+python scripts/build_reproducible_wheels.py
 docker build -t facturacion-dian-api .
 ```
 
@@ -275,6 +277,16 @@ Otras trampas del `ApplicationResponse` (`core/xml/application_response_builder.
 - El `034` (aceptación tácita) **no se implementa**: lo registra el emisor.
 
 ## 12. Convenciones
+
+### Imagen y paquetes aprobados
+
+La imagen instala los wheels reproducidos desde `release/manifest.json`, nunca el
+checkout en modo editable. Se encontró una imagen con la versión correcta pero
+10 archivos Python con CRLF diferentes de los wheels aprobados. La comprobación
+`scripts/verify_release.py --runtime` compara bytes y rutas de importación: no
+normalices finales de línea para hacerla pasar. Genera una versión nueva cuando
+cambie el runtime aprobado; conserva los artefactos históricos. El procedimiento
+está en `docs/despliegue-020a2.md`.
 
 - **Idioma.** Documentación, README, `CONTRIBUTING.md` y PRs/commits: **español**
   (la voz pública del repo). Comentarios de código: el inglés es la norma existente

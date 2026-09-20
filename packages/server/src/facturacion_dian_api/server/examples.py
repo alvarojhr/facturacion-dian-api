@@ -487,7 +487,7 @@ NUMBERING_RANGE_LOOKUP_RESPONSE_EXAMPLE = {
 
 HEALTH_RESPONSE_EXAMPLE = {
     "status": "ok",
-    "version": "0.2.0a1",
+    "version": "0.2.0a2",
     "dian_environment": "habilitacion",
     "certificate_loaded": True,
     "certificate_valid_until": "2027-12-31T23:59:59+00:00",

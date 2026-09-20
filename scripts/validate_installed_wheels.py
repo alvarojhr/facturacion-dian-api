@@ -13,6 +13,7 @@ import importlib.metadata as metadata
 import ipaddress
 import json
 import os
+import runpy
 import socket
 import sys
 from datetime import UTC, datetime, timedelta
@@ -29,6 +30,9 @@ def main() -> int:
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
     manifest = json.loads((args.artifact_dir / "manifest.json").read_text(encoding="utf-8"))
+    verification = runpy.run_path(str(repo / "scripts" / "verify_release.py"))["verify"](
+        args.artifact_dir, runtime=True,
+    )
     for family in ("fe", "dee"):
         folder = getattr(args, family + "_xsd_dir")
         assert (folder / "UBL-Invoice-2.1.xsd").is_file(), folder
@@ -87,6 +91,7 @@ def main() -> int:
     (args.artifact_dir / "installed-qa.json").write_text(json.dumps({
         "commit": manifest["commit"], "python": sys.executable, "modules": modules,
         "versions": versions, "health": health, "pytest_exit_code": int(result),
+        "runtime_verification": verification,
         "fe_xsd_dir": str(args.fe_xsd_dir), "dee_xsd_dir": str(args.dee_xsd_dir),
         "external_network_blocked": True,
     }, indent=2) + "\n", encoding="utf-8")

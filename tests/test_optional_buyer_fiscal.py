@@ -9,7 +9,7 @@ import json
 import os
 import socket
 from copy import deepcopy
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
@@ -340,9 +340,9 @@ CONSUMER_CASES = json.loads((Path(__file__).parent / "fixtures/consumer-buyer-co
 @pytest.mark.parametrize("case", CONSUMER_CASES, ids=lambda case: case["name"])
 def test_existing_fe_and_pinki_requests(case, real_crypto):
     payload = deepcopy(case["payload"])
-    payload["document"]["issue_date"] = datetime.now().date().isoformat()
+    payload["document"]["issue_date"] = datetime.now(timezone(timedelta(hours=-5))).date().isoformat()
     if case.get("invalid"):
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError, match=case.get("error")):
             xml(payload)
     else:
         _, root = xml(payload)
@@ -354,7 +354,7 @@ def test_existing_fe_and_pinki_requests(case, real_crypto):
 @pytest.mark.parametrize("family", ["NOTA_CREDITO", "NOTA_DEBITO"])
 def test_notes_keep_discount_and_tax_amounts_in_ubl_order(family, real_crypto):
     payload = deepcopy(next(c["payload"] for c in CONSUMER_CASES if c["name"] == "Pinki NC parcial"))
-    payload["document"].update(type=family, issue_date=datetime.now().date().isoformat())
+    payload["document"].update(type=family, issue_date=datetime.now(timezone(timedelta(hours=-5))).date().isoformat())
     payload["buyer"] = deepcopy(CC)
     _, root = xml(payload)
     line = root.xpath("cac:CreditNoteLine|cac:DebitNoteLine", namespaces=NS)[0]

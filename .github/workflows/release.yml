@@ -25,6 +25,20 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Reproduce approved release
+        id: contract
+        run: |
+          # Esta rama sirve el contrato incompatible 0.2: nunca publicar como v1.
+          [[ "$GITHUB_REF_NAME" =~ ^v([2-9]|[1-9][0-9]+)\.[0-9]+\.[0-9]+$ ]]
+          python -m venv /tmp/dian-build
+          /tmp/dian-build/bin/python -m pip install --no-deps --require-hashes -r requirements-build.lock
+          /tmp/dian-build/bin/python scripts/build_reproducible_wheels.py
+          echo "version=$(jq -r '.versions.server' release/manifest.json)" >> "$GITHUB_OUTPUT"
+
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -43,9 +57,35 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          push: true
+          load: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Verify the image before publishing
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+        run: |
+          docker run --rm --network none "$IMAGE" python -I /opt/dian-release/verify_release.py --artifact-dir /opt/dian-release --runtime
+          docker run --rm --network none -v "$PWD/scripts/smoke_release.py:/tmp/smoke_release.py:ro" "$IMAGE" python -I /tmp/smoke_release.py
+
+      - name: Publish the verified image and record its digest
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          set -euo pipefail
+          while IFS= read -r tag; do
+            test -z "$tag" || docker push "$tag"
+          done <<< "$TAGS"
+          digest="$(docker buildx imagetools inspect "${IMAGE}:${GITHUB_REF_NAME}" --format '{{.Manifest.Digest}}')"
+          [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          echo "${IMAGE}@${digest}" | tee dist/release/image-digest.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dian-release-${{ github.ref_name }}
+          path: dist/release/
+          if-no-files-found: error
 
       - name: Keep latest on the published v1 line
         if: ${{ !startsWith(github.ref_name, 'v1.') }}
@@ -76,7 +116,7 @@ jobs:
       - name: Trigger ferreterias-invoicing deploy
         # La línea v2 requiere que el consumidor confirme su migración antes
         # de reemplazar servicios que todavía reciben el contrato anterior.
-        if: ${{ env.RELEASE_PAT != '' && (startsWith(github.ref_name, 'v1.') || vars.DOWNSTREAM_HTTP_CONTRACT == '0.2.0a0') }}
+        if: ${{ env.RELEASE_PAT != '' && (startsWith(github.ref_name, 'v1.') || vars.DOWNSTREAM_HTTP_CONTRACT == steps.contract.outputs.version) }}
         env:
           GH_TOKEN: ${{ env.RELEASE_PAT }}
         run: |
@@ -87,8 +127,8 @@ jobs:
           echo "Dispatch enviado a ferreterias-invoicing con tag ${{ github.ref_name }}"
 
       - name: Consumer migration required
-        if: ${{ !startsWith(github.ref_name, 'v1.') && vars.DOWNSTREAM_HTTP_CONTRACT != '0.2.0a0' }}
-        run: echo "Imagen publicada; despliegue automático del consumidor pendiente de migración al contrato HTTP 0.2.0a0."
+        if: ${{ !startsWith(github.ref_name, 'v1.') && vars.DOWNSTREAM_HTTP_CONTRACT != steps.contract.outputs.version }}
+        run: echo "Imagen publicada; despliegue automático pendiente de confirmar la versión exacta del contrato publicada."
 
       - name: Warn if deploy token missing
         if: ${{ env.RELEASE_PAT == '' }}

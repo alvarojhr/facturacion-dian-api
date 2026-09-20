@@ -4,7 +4,7 @@ La revisión `0.2.0a0` endurece el contrato HTTP para impedir que un payload amb
 
 La imagen se publica en la línea OCI `v2`, separada de la versión Python/HTTP
 `0.2.0a0`. Conserva `latest` en la línea anterior. El despliegue automático del
-consumidor requiere `DOWNSTREAM_HTTP_CONTRACT=0.2.0a0` en este repositorio,
+consumidor requiere `DOWNSTREAM_HTTP_CONTRACT` igual a la versión del manifiesto publicado en este repositorio,
 únicamente después de validar su migración. Un consumidor puede fijar el digest
 de v2 en un servicio separado sin activar ese dispatch global.
 
@@ -14,7 +14,7 @@ de v2 en un servicio separado sin activar ese dispatch global.
 2. En facturas y documentos equivalentes, envíe la resolución completa: `number`, `prefix`, `date`, `range_from`, `range_to`, `valid_from` y `valid_to`. Las notas con consecutivo interno pueden omitir `resolution`.
 3. Use la fecha de Colombia del día para un documento que se firma por primera vez. Para reintentar uno anterior, envíe el XML exacto devuelto por `prepare_only`, junto con su mismo nombre técnico.
 4. Incluya `item_code` en cada línea. Los importes usan decimales con máximo dos posiciones y las cantidades admiten hasta seis.
-5. En `0.2.0a0` se exigían los cinco campos del perfil identificado. La versión candidata `0.2.0a1` separa identidad de datos fiscales desconocidos; consulte [la política actual y la dependencia de entrega AE28](compradores-parciales-020a1.md).
+5. En `0.2.0a0` se exigían los cinco campos del perfil identificado. Desde `0.2.0a1` se separa identidad de datos fiscales desconocidos; consulte [la política y la dependencia de entrega AE28](compradores-parciales-020a1.md) y el [candidato actual `0.2.0a2`](despliegue-020a2.md).
 6. Si el emisor viaja en el body, envíe su perfil completo. Ya no se mezclan sus datos con defaults de otra empresa.
 7. Informe `payment_form=CONTADO|CREDITO`; para crédito, envíe `payment_due_date`.
 8. En notas, envíe causal y modalidad en `references.reason` y `references.response_code`, además de una referencia completa o un período completo.

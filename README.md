@@ -1,6 +1,6 @@
 # facturacion-dian-api
 
-La versión candidata `0.2.0a1` admite [compradores con datos fiscales desconocidos](docs/compradores-parciales-020a1.md). Revise la política por familia y la dependencia pendiente de AE28 antes de activar la entrega electrónica.
+La versión candidata `0.2.0a2` conserva el [contrato de compradores con datos fiscales desconocidos](docs/compradores-parciales-020a1.md), integra las correcciones vigentes y usa una [imagen verificable por hashes](docs/despliegue-020a2.md). La dependencia de entrega AE28 sigue abierta cuando el XML original no contiene responsabilidad fiscal.
 
 API HTTP de alto nivel para integrar facturacion electronica DIAN en Colombia.
 

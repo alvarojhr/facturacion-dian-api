@@ -216,6 +216,8 @@
   },
   {
     "name": "Pinki CxC crédito",
+    "invalid": true,
+    "error": "CREDITO no está permitido para consumidor final",
     "payload": {
       "document": {
         "number": "FE00001",

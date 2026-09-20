@@ -1,6 +1,6 @@
 [project]
 name = "facturacion-dian-api-core"
-version = "0.2.0a1"
+version = "0.2.0a2"
 description = "Core DIAN invoicing domain, XML, signing, and SOAP integration logic"
 license = {text = "Apache-2.0"}
 requires-python = ">=3.12"

@@ -15,10 +15,16 @@ python scripts/validate_skill.py
 python -m ruff check .
 python -m mypy packages/core/src packages/server/src
 python -m pytest
+python -m pip install --no-deps --require-hashes -r requirements-build.lock
+python scripts/build_reproducible_wheels.py
 docker build -t facturacion-dian-api .
 ```
 
 ## Reglas de contribucion
+
+El build reproduce `release/manifest.json`; si cambia el runtime, prepara y revisa
+un candidato con una versión nueva siguiendo [el procedimiento de publicación](docs/despliegue-020a2.md).
+No reemplaces un wheel aprobado conservando su versión.
 
 - Manten el comportamiento DIAN determinista y respaldado por pruebas.
 - No introduzcas branding especifico de un emisor ni defaults privados de negocio.
