@@ -5,6 +5,12 @@ from __future__ import annotations
 from decimal import Decimal, localcontext
 from typing import Any, Literal, cast
 
+from facturacion_dian_api.core.buyer import (
+    resolve_buyer_identity,
+    validate_buyer_family,
+    validate_responsibilities,
+    validate_tax_scheme,
+)
 from facturacion_dian_api.core.monetary import (
     IVA_TYPES,
     money,
@@ -15,7 +21,7 @@ from facturacion_dian_api.core.payments import PaymentDetails
 from facturacion_dian_api.core.payments import PaymentForm as PaymentForm
 from facturacion_dian_api.core.payments import PaymentMethod as PaymentMethod
 from facturacion_dian_api.core.xml.namespaces import TAX_TYPE_TO_DIAN
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 DocumentType = Literal[
     "FACTURA_ELECTRONICA",
@@ -321,6 +327,22 @@ class DocumentSubmitRequest(PaymentDetails, DocumentAmounts):
     signed_xml_base64: str | None = None
     signed_xml_filename: str | None = None
 
+    @field_validator("customer_tax_level_code")
+    @classmethod
+    def validate_customer_responsibilities(cls, value: str | None) -> str | None:
+        return validate_responsibilities(value)
+
+    @model_validator(mode="after")
+    def validate_customer(self) -> DocumentSubmitRequest:
+        document_type, _ = resolve_buyer_identity(
+            self.customer_document_type, self.customer_nit,
+            self.customer_name, self.customer_additional_account_id,
+        )
+        validate_tax_scheme(self.customer_tax_scheme_id, self.customer_tax_scheme_name)
+        if not self.signed_xml_base64:
+            validate_buyer_family(self.document_type, document_type, self.customer_tax_level_code)
+        return self
+
     @model_validator(mode="after")
     def validate_amounts_and_payments(self) -> DocumentSubmitRequest:
         self.validate_payment_context(self.issue_date, self.document_type)
@@ -379,7 +401,10 @@ class AttachedDocumentBuildRequest(BaseModel):
     receiver_nit: str
     receiver_dv: str | None = None
     receiver_document_type: str
-    receiver_tax_level_code: str
+    receiver_tax_level_code: str | None = Field(
+        default=None,
+        description="Optional assertion against the signed source. AE28 requires a known source value.",
+    )
     receiver_email: str | None = None
     reply_to_email: str
     company_name: str | None = None
@@ -393,6 +418,11 @@ class AttachedDocumentBuildRequest(BaseModel):
     cufe: str
     file_sequence: int | None = Field(default=None, ge=1, le=0xFFFFFFFF)
     file_provider_code: str = Field(default="000", pattern=r"^\d{3}$")
+
+    @field_validator("receiver_tax_level_code")
+    @classmethod
+    def validate_receiver_responsibilities(cls, value: str | None) -> str | None:
+        return validate_responsibilities(value)
 
 
 class AttachedDocumentBuildResponse(BaseModel):

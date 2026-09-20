@@ -1,0 +1,2490 @@
+[
+  {
+    "name": "FE factura completa",
+    "payload": {
+      "document": {
+        "number": "TEST1",
+        "type": "FACTURA_ELECTRONICA",
+        "issue_date": "2026-09-19",
+        "issue_time": "21:08:22-05:00",
+        "payment_form": "CONTADO",
+        "payment_method": "CASH"
+      },
+      "issuer": {
+        "nit": "900987654",
+        "dv": "7",
+        "name": "Emisor sintético",
+        "additional_account_id": "1",
+        "address": "Calle de prueba 1",
+        "city_code": "11001",
+        "city_name": "Bogotá",
+        "department_code": "11",
+        "department_name": "Bogotá",
+        "country_code": "CO",
+        "tax_level_code": "O-13;O-15",
+        "tax_scheme_id": "01",
+        "tax_scheme_name": "IVA"
+      },
+      "buyer": {
+        "additional_account_id": "1",
+        "tax_level_code": "R-99-PN",
+        "tax_scheme_id": "01",
+        "tax_scheme_name": "IVA",
+        "name": "Comprador sintético",
+        "document_number": "900123456",
+        "document_type": "NIT",
+        "email": "buyer@example.test",
+        "country_code": "CO"
+      },
+      "resolution": {
+        "number": "18764000000001",
+        "prefix": "TEST",
+        "date": "2026-01-01",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      },
+      "totals": {
+        "subtotal": "1000.00",
+        "tax_total": "190.00",
+        "total": "1190",
+        "payable_rounding_amount": "0.00"
+      },
+      "line_items": [
+        {
+          "description": "Producto sintético",
+          "item_name": "Producto sintético",
+          "item_code": "producto-sintetico",
+          "quantity": "1",
+          "unit_price": "1000.00",
+          "line_total": "1000.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "190.00"
+        }
+      ],
+      "environment": "produccion",
+      "submission_options": {
+        "file_sequence": 100000,
+        "software_id": "00000000-0000-4000-8000-000000000001",
+        "software_pin": "12345",
+        "technical_key": "synthetic-technical-key",
+        "return_xml_artifact": true,
+        "file_provider_code": "001"
+      },
+      "client_reference": "40000000-0000-4000-8000-000000000001"
+    }
+  },
+  {
+    "name": "FE NC completa",
+    "payload": {
+      "document": {
+        "number": "NC1",
+        "type": "NOTA_CREDITO",
+        "issue_date": "2026-09-19",
+        "issue_time": "21:08:23-05:00",
+        "payment_method": "CASH",
+        "payment_form": "CONTADO"
+      },
+      "issuer": {
+        "nit": "900987654",
+        "dv": "7",
+        "name": "Emisor sintético",
+        "additional_account_id": "1",
+        "address": "Calle de prueba 1",
+        "city_code": "11001",
+        "city_name": "Bogotá",
+        "department_code": "11",
+        "department_name": "Bogotá",
+        "country_code": "CO",
+        "tax_level_code": "O-13;O-15",
+        "tax_scheme_id": "01",
+        "tax_scheme_name": "IVA"
+      },
+      "buyer": {
+        "additional_account_id": "1",
+        "tax_level_code": "R-99-PN",
+        "tax_scheme_id": "01",
+        "tax_scheme_name": "IVA",
+        "name": "Comprador sintético",
+        "document_number": "900123456",
+        "document_type": "NIT",
+        "email": "buyer@example.test",
+        "country_code": "CO"
+      },
+      "resolution": {
+        "number": "18764000000001",
+        "prefix": "NC",
+        "date": "2026-01-01",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2027-01-01"
+      },
+      "totals": {
+        "subtotal": "1000.00",
+        "tax_total": "190.00",
+        "total": "1190",
+        "payable_rounding_amount": "0.00"
+      },
+      "line_items": [
+        {
+          "description": "Producto sintético",
+          "item_name": "Producto sintético",
+          "item_code": "producto-sintetico",
+          "quantity": "1",
+          "unit_price": "1000.00",
+          "line_total": "1000.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "190.00"
+        }
+      ],
+      "references": {
+        "referenced_document_number": "TEST1",
+        "referenced_document_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "referenced_issue_date": "2026-01-02",
+        "reason": "Anulación de prueba",
+        "response_code": "2"
+      },
+      "environment": "produccion",
+      "submission_options": {
+        "file_sequence": 100001,
+        "software_id": "00000000-0000-4000-8000-000000000001",
+        "software_pin": "12345",
+        "technical_key": "synthetic-technical-key",
+        "return_xml_artifact": true
+      },
+      "client_reference": "40000000-0000-4000-8000-000000000001"
+    }
+  },
+  {
+    "name": "Pinki contado",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "FACTURA_ELECTRONICA",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 10000,
+        "tax_total": 1900,
+        "total": 11900
+      },
+      "line_items": [
+        {
+          "description": "Tornillo",
+          "item_name": "Tornillo",
+          "item_code": "SKU-1",
+          "unit_code": "94",
+          "quantity": "2",
+          "unit_price": "5000.00",
+          "line_total": "10000.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "1900.00",
+          "allowance_charges": []
+        }
+      ],
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki CxC crédito",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "FACTURA_ELECTRONICA",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_due_date": "2030-01-01",
+        "payment_form": "CREDITO",
+        "payment_methods": [
+          "CREDIT"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 10000,
+        "tax_total": 1900,
+        "total": 11900
+      },
+      "line_items": [
+        {
+          "description": "Tornillo",
+          "item_name": "Tornillo",
+          "item_code": "SKU-1",
+          "unit_code": "94",
+          "quantity": "2",
+          "unit_price": "5000.00",
+          "line_total": "10000.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "1900.00",
+          "allowance_charges": []
+        }
+      ],
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki POS",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "DOCUMENTO_EQUIVALENTE_POS",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH"
+        ],
+        "point_of_sale": {
+          "register_plate": "CAJA1",
+          "register_location": "Bogota",
+          "cashier_name": "Cajero",
+          "register_type": "POS",
+          "sale_code": "VENTA1"
+        }
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 10000,
+        "tax_total": 1900,
+        "total": 11900
+      },
+      "line_items": [
+        {
+          "description": "Tornillo",
+          "item_name": "Tornillo",
+          "item_code": "SKU-1",
+          "unit_code": "94",
+          "quantity": "2",
+          "unit_price": "5000.00",
+          "line_total": "10000.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "1900.00",
+          "allowance_charges": []
+        }
+      ],
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki descuento",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "FACTURA_ELECTRONICA",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 9000,
+        "tax_total": 1710,
+        "total": 10710
+      },
+      "line_items": [
+        {
+          "description": "Tornillo",
+          "item_name": "Tornillo",
+          "item_code": "SKU-1",
+          "unit_code": "94",
+          "quantity": "2",
+          "unit_price": "5000.00",
+          "line_total": "9000.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "1710.00",
+          "allowance_charges": [
+            {
+              "charge_indicator": false,
+              "reason": "Descuento comercial capturado",
+              "amount": "1000.00"
+            }
+          ]
+        }
+      ],
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki cantidad fraccionaria",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "FACTURA_ELECTRONICA",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2500,
+        "tax_total": 475,
+        "total": 2975
+      },
+      "line_items": [
+        {
+          "description": "Tornillo",
+          "item_name": "Tornillo",
+          "item_code": "SKU-1",
+          "unit_code": "94",
+          "quantity": "0.5",
+          "unit_price": "5000.00",
+          "line_total": "2500.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "475.00",
+          "allowance_charges": []
+        }
+      ],
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki NC parcial",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "NOTA_CREDITO",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 4500,
+        "tax_total": 855,
+        "total": 5355
+      },
+      "line_items": [
+        {
+          "description": "Tornillo",
+          "item_name": "Tornillo",
+          "item_code": "SKU-1",
+          "unit_code": "94",
+          "quantity": "1",
+          "unit_price": "5000.00",
+          "line_total": "4500.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "855.00",
+          "allowance_charges": [
+            {
+              "charge_indicator": false,
+              "reason": "Descuento comercial capturado",
+              "amount": "500.00"
+            }
+          ]
+        }
+      ],
+      "references": {
+        "referenced_document_number": "FE00002",
+        "referenced_document_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "referenced_issue_date": "2026-09-15",
+        "reason": "Devolución parcial",
+        "response_code": "1"
+      },
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki ajuste POS 94",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "NOTA_AJUSTE_DEE_CREDITO",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 10000,
+        "tax_total": 1900,
+        "total": 11900
+      },
+      "line_items": [
+        {
+          "description": "Tornillo",
+          "item_name": "Tornillo",
+          "item_code": "SKU-1",
+          "unit_code": "94",
+          "quantity": "2",
+          "unit_price": "5000.00",
+          "line_total": "10000.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "1900.00",
+          "allowance_charges": []
+        }
+      ],
+      "references": {
+        "referenced_document_number": "POS00002",
+        "referenced_document_key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "referenced_issue_date": "2026-09-15",
+        "reason": "Devolución POS",
+        "response_code": "1"
+      },
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki CxC IVA asignado",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "FACTURA_ELECTRONICA",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 531,
+        "total": 3332
+      },
+      "line_items": [
+        {
+          "description": "CxC",
+          "item_name": "CxC",
+          "item_code": "CXC",
+          "unit_code": "MTR",
+          "quantity": "3.332",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "531.00",
+          "allowance_charges": []
+        }
+      ],
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki diez diferencias agregadas",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "FACTURA_ELECTRONICA",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 28010,
+        "tax_total": 5320,
+        "total": 33330
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        },
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        },
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        },
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        },
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        },
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        },
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        },
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        },
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        },
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki contado CASH/DEBIT_CARD",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "FACTURA_ELECTRONICA",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH",
+          "DEBIT_CARD"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 532,
+        "total": 3333
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki contado CASH/TRANSFER",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "FACTURA_ELECTRONICA",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH",
+          "TRANSFER"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 532,
+        "total": 3333
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki contado DEBIT_CARD/CREDIT_CARD",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "FACTURA_ELECTRONICA",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "DEBIT_CARD",
+          "CREDIT_CARD"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 532,
+        "total": 3333
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki contado DEBIT_CARD",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "FACTURA_ELECTRONICA",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "DEBIT_CARD"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 532,
+        "total": 3333
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki contado CASH/DEBIT_CARD/CASH",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "FACTURA_ELECTRONICA",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH",
+          "DEBIT_CARD",
+          "CASH"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 532,
+        "total": 3333
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki POS CASH/DEBIT_CARD",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "DOCUMENTO_EQUIVALENTE_POS",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH",
+          "DEBIT_CARD"
+        ],
+        "point_of_sale": {
+          "register_plate": "CAJA1",
+          "register_location": "Bogota",
+          "cashier_name": "Cajero",
+          "register_type": "POS",
+          "sale_code": "VENTA1"
+        }
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 532,
+        "total": 3333
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki POS CASH/TRANSFER",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "DOCUMENTO_EQUIVALENTE_POS",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH",
+          "TRANSFER"
+        ],
+        "point_of_sale": {
+          "register_plate": "CAJA1",
+          "register_location": "Bogota",
+          "cashier_name": "Cajero",
+          "register_type": "POS",
+          "sale_code": "VENTA1"
+        }
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 532,
+        "total": 3333
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki POS DEBIT_CARD/CREDIT_CARD",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "DOCUMENTO_EQUIVALENTE_POS",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "DEBIT_CARD",
+          "CREDIT_CARD"
+        ],
+        "point_of_sale": {
+          "register_plate": "CAJA1",
+          "register_location": "Bogota",
+          "cashier_name": "Cajero",
+          "register_type": "POS",
+          "sale_code": "VENTA1"
+        }
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 532,
+        "total": 3333
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki POS DEBIT_CARD",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "DOCUMENTO_EQUIVALENTE_POS",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "DEBIT_CARD"
+        ],
+        "point_of_sale": {
+          "register_plate": "CAJA1",
+          "register_location": "Bogota",
+          "cashier_name": "Cajero",
+          "register_type": "POS",
+          "sale_code": "VENTA1"
+        }
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 532,
+        "total": 3333
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki POS CASH/DEBIT_CARD/CASH",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "DOCUMENTO_EQUIVALENTE_POS",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH",
+          "DEBIT_CARD",
+          "CASH"
+        ],
+        "point_of_sale": {
+          "register_plate": "CAJA1",
+          "register_location": "Bogota",
+          "cashier_name": "Cajero",
+          "register_type": "POS",
+          "sale_code": "VENTA1"
+        }
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 532,
+        "total": 3333
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki NC parcial CASH/DEBIT_CARD",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "NOTA_CREDITO",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH",
+          "DEBIT_CARD"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 532,
+        "total": 3333
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "references": {
+        "referenced_document_number": "FE00002",
+        "referenced_document_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "referenced_issue_date": "2026-09-15",
+        "reason": "Devolución parcial",
+        "response_code": "1"
+      },
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki NC parcial CASH/TRANSFER",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "NOTA_CREDITO",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH",
+          "TRANSFER"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 532,
+        "total": 3333
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "references": {
+        "referenced_document_number": "FE00002",
+        "referenced_document_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "referenced_issue_date": "2026-09-15",
+        "reason": "Devolución parcial",
+        "response_code": "1"
+      },
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki NC parcial DEBIT_CARD/CREDIT_CARD",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "NOTA_CREDITO",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "DEBIT_CARD",
+          "CREDIT_CARD"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 532,
+        "total": 3333
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "references": {
+        "referenced_document_number": "FE00002",
+        "referenced_document_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "referenced_issue_date": "2026-09-15",
+        "reason": "Devolución parcial",
+        "response_code": "1"
+      },
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki NC parcial DEBIT_CARD",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "NOTA_CREDITO",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "DEBIT_CARD"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 532,
+        "total": 3333
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "references": {
+        "referenced_document_number": "FE00002",
+        "referenced_document_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "referenced_issue_date": "2026-09-15",
+        "reason": "Devolución parcial",
+        "response_code": "1"
+      },
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki NC parcial CASH/DEBIT_CARD/CASH",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "NOTA_CREDITO",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH",
+          "DEBIT_CARD",
+          "CASH"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 532,
+        "total": 3333
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "references": {
+        "referenced_document_number": "FE00002",
+        "referenced_document_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "referenced_issue_date": "2026-09-15",
+        "reason": "Devolución parcial",
+        "response_code": "1"
+      },
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki ajuste POS 94 CASH/DEBIT_CARD",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "NOTA_AJUSTE_DEE_CREDITO",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH",
+          "DEBIT_CARD"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 532,
+        "total": 3333
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "references": {
+        "referenced_document_number": "POS00002",
+        "referenced_document_key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "referenced_issue_date": "2026-09-15",
+        "reason": "Devolución POS",
+        "response_code": "1"
+      },
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki ajuste POS 94 CASH/TRANSFER",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "NOTA_AJUSTE_DEE_CREDITO",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH",
+          "TRANSFER"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 532,
+        "total": 3333
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "references": {
+        "referenced_document_number": "POS00002",
+        "referenced_document_key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "referenced_issue_date": "2026-09-15",
+        "reason": "Devolución POS",
+        "response_code": "1"
+      },
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki ajuste POS 94 DEBIT_CARD/CREDIT_CARD",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "NOTA_AJUSTE_DEE_CREDITO",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "DEBIT_CARD",
+          "CREDIT_CARD"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 532,
+        "total": 3333
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "references": {
+        "referenced_document_number": "POS00002",
+        "referenced_document_key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "referenced_issue_date": "2026-09-15",
+        "reason": "Devolución POS",
+        "response_code": "1"
+      },
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki ajuste POS 94 DEBIT_CARD",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "NOTA_AJUSTE_DEE_CREDITO",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "DEBIT_CARD"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 532,
+        "total": 3333
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "references": {
+        "referenced_document_number": "POS00002",
+        "referenced_document_key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "referenced_issue_date": "2026-09-15",
+        "reason": "Devolución POS",
+        "response_code": "1"
+      },
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki ajuste POS 94 CASH/DEBIT_CARD/CASH",
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "NOTA_AJUSTE_DEE_CREDITO",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH",
+          "DEBIT_CARD",
+          "CASH"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 532,
+        "total": 3333
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "references": {
+        "referenced_document_number": "POS00002",
+        "referenced_document_key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "referenced_issue_date": "2026-09-15",
+        "reason": "Devolución POS",
+        "response_code": "1"
+      },
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki once diferencias exceden el agregado",
+    "invalid": true,
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "FACTURA_ELECTRONICA",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 30811,
+        "tax_total": 5852,
+        "total": 36663
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        },
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        },
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        },
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        },
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        },
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        },
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        },
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        },
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        },
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        },
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki IVA fuera de margen",
+    "invalid": true,
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "FACTURA_ELECTRONICA",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 535,
+        "total": 3336
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "535.00",
+          "allowance_charges": []
+        }
+      ],
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki base sin descuento comercial que la explique",
+    "invalid": true,
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "FACTURA_ELECTRONICA",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2795,
+        "tax_total": 532,
+        "total": 3327
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2795.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki IVA cero con impuesto",
+    "invalid": true,
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "FACTURA_ELECTRONICA",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 2801,
+        "tax_total": 532,
+        "total": 3333
+      },
+      "line_items": [
+        {
+          "description": "Cable",
+          "item_name": "Cable",
+          "item_code": "CABLE",
+          "unit_code": "94",
+          "quantity": "3.333",
+          "unit_price": "840.34",
+          "line_total": "2801.00",
+          "tax_type": "IVA_0",
+          "tax_amount": "532.00",
+          "allowance_charges": []
+        }
+      ],
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  },
+  {
+    "name": "Pinki cabecera descuadrada un peso",
+    "invalid": true,
+    "payload": {
+      "document": {
+        "number": "FE00001",
+        "type": "FACTURA_ELECTRONICA",
+        "issue_date": "2026-09-15",
+        "issue_time": "08:30:00-05:00",
+        "payment_form": "CONTADO",
+        "payment_methods": [
+          "CASH"
+        ]
+      },
+      "buyer": {
+        "document_number": "222222222222",
+        "document_type": "FINAL_CONSUMER",
+        "name": "consumidor final"
+      },
+      "resolution": {
+        "number": "18764000001",
+        "date": "2026-01-01",
+        "prefix": "FE",
+        "range_from": 1,
+        "range_to": 99999,
+        "valid_from": "2026-01-01",
+        "valid_to": "2030-12-31",
+        "number_width": 5
+      },
+      "totals": {
+        "subtotal": 10000,
+        "tax_total": 1900,
+        "total": 11901
+      },
+      "line_items": [
+        {
+          "description": "Tornillo",
+          "item_name": "Tornillo",
+          "item_code": "SKU-1",
+          "unit_code": "94",
+          "quantity": "2",
+          "unit_price": "5000.00",
+          "line_total": "10000.00",
+          "tax_type": "IVA_19",
+          "tax_amount": "1900.00",
+          "allowance_charges": []
+        }
+      ],
+      "environment": "habilitacion",
+      "submission_options": {
+        "return_xml_artifact": true,
+        "file_sequence": 1,
+        "file_provider_code": "000",
+        "prepare_only": false
+      },
+      "client_reference": "pinki-contrato-020"
+    }
+  }
+]

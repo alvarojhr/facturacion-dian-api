@@ -42,6 +42,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_EXAMPLES_DIR = REPO_ROOT / "docs" / "examples"
 
 REQUEST_MODELS = {
+    "comprador-cc-parcial.json": DocumentSubmissionRequest,
+    "comprador-nit-parcial.json": DocumentSubmissionRequest,
     "pagos-efectivo-debito.json": DocumentSubmissionRequest,
     "pagos-efectivo-transferencia.json": DocumentSubmissionRequest,
     "pagos-debito-credito.json": DocumentSubmissionRequest,

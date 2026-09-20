@@ -7,6 +7,12 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Literal, cast
 
+from facturacion_dian_api.core.buyer import (
+    resolve_buyer_identity,
+    validate_buyer_family,
+    validate_responsibilities,
+    validate_tax_scheme,
+)
 from facturacion_dian_api.core.models import (
     ClaimCauseCode,
     CustomerDocumentType,
@@ -256,37 +262,28 @@ class BuyerInput(BaseModel):
     department_code: str | None = None
     department_name: str | None = None
     country_code: str | None = None
-    additional_account_id: Literal["1", "2"] | None = None
-    tax_level_code: str | None = None
-    tax_scheme_id: str | None = None
-    tax_scheme_name: str | None = None
+    additional_account_id: Literal["1", "2"] | None = Field(
+        default=None, description="NIT requires confirmed 1/2; CC/CE/TI/PASSPORT imply natural person (2).",
+    )
+    tax_level_code: str | None = Field(
+        default=None, description="Unknown when omitted/null; optional for FE/NC/ND/POS, required for DEE adjustments. Known codes separated by semicolons.",
+    )
+    tax_scheme_id: str | None = Field(
+        default=None, description="Provide with matching tax_scheme_name, or omit both. Unknown stays null; XML uses technical ZZ/No aplica.",
+    )
+    tax_scheme_name: str | None = Field(default=None, description="01/IVA, 04/INC, ZA/IVA e INC, ZZ/No aplica.")
 
     @field_validator("tax_level_code")
     @classmethod
     def validate_responsibilities(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        allowed = {"O-13", "O-15", "O-23", "O-47", "R-99-PN"}
-        values = [part.strip().upper() for part in value.split(";")]
-        invalid = [part for part in values if part not in allowed]
-        if invalid:
-            raise ValueError("Unknown DIAN fiscal responsibility: " + ", ".join(invalid))
-        return ";".join(values)
+        return validate_responsibilities(value)
 
     @model_validator(mode="after")
     def validate_fiscal_identity(self) -> BuyerInput:
-        final_consumer = self.document_type == "FINAL_CONSUMER" or not self.document_number
-        if not final_consumer:
-            required = {
-                "document_type": self.document_type,
-                "additional_account_id": self.additional_account_id,
-                "tax_level_code": self.tax_level_code,
-                "tax_scheme_id": self.tax_scheme_id,
-                "tax_scheme_name": self.tax_scheme_name,
-            }
-            missing = [name for name, value in required.items() if not value]
-            if missing:
-                raise ValueError("Identified buyer fiscal identity is incomplete: " + ", ".join(missing))
+        resolve_buyer_identity(
+            self.document_type, self.document_number, self.name, self.additional_account_id,
+        )
+        validate_tax_scheme(self.tax_scheme_id, self.tax_scheme_name)
         return self
 
 
@@ -395,6 +392,12 @@ class DocumentSubmissionRequest(BaseModel):
             raise ValueError("document.issue_date cannot be in the future")
         options = self.submission_options
         is_reusing_signed_xml = bool(options.signed_xml_base64)
+        if not is_reusing_signed_xml:
+            buyer_type, _ = resolve_buyer_identity(
+                self.buyer.document_type, self.buyer.document_number,
+                self.buyer.name, self.buyer.additional_account_id,
+            )
+            validate_buyer_family(self.document.type, buyer_type, self.buyer.tax_level_code)
         if (
             self.document.issue_date != today
             and "CONTINGENCIA" not in self.document.type
@@ -579,7 +582,10 @@ class AttachedDocumentRequest(BaseModel):
     receiver_nit: str
     receiver_dv: str | None = None
     receiver_document_type: str
-    receiver_tax_level_code: str
+    receiver_tax_level_code: str | None = Field(
+        default=None,
+        description="Optional assertion: copied from signed XML when present. If absent there, delivery fails explicitly (AE28); no invented fallback.",
+    )
     receiver_email: str | None = None
     reply_to_email: str
     company_name: str | None = None

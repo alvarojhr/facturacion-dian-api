@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import base64
+from typing import cast
 
+from facturacion_dian_api.core.buyer import validate_responsibilities, validate_tax_scheme
 from facturacion_dian_api.core.models import AttachedDocumentBuildRequest
 from facturacion_dian_api.core.signing.xades import verify_embedded_document_signature
 from facturacion_dian_api.core.xml.namespaces import (
@@ -43,7 +45,7 @@ def _text(root: etree._Element, xpath: str) -> str:
 
 def _validate_sources(
     req: AttachedDocumentBuildRequest,
-) -> tuple[str, str, str, str, str, str]:
+) -> tuple[str, str, str, str, str, str, etree._Element]:
     _, invoice = _decode_xml(req.invoice_xml_base64, "invoice_xml_base64")
     _, response = _decode_xml(
         req.application_response_xml_base64,
@@ -68,6 +70,10 @@ def _validate_sources(
     )
     if metadata != (req.document_number, req.cufe, req.issue_date, req.issue_time):
         raise ValueError("AttachedDocument metadata does not match the signed source document")
+    type_code = _text(invoice, "/*/*[local-name()='InvoiceTypeCode' or "
+                      "local-name()='CreditNoteTypeCode' or local-name()='DebitNoteTypeCode'][1]")
+    if type_code != req.document_type_code:
+        raise ValueError("AttachedDocument document type does not match the signed source document")
 
     response_code = _text(
         response,
@@ -97,8 +103,54 @@ def _validate_sources(
     environment = _text(invoice, "/*/*[local-name()='ProfileExecutionID'][1]")
     if environment not in {"1", "2"}:
         raise ValueError("signed source document has an invalid ProfileExecutionID")
-    key_scheme = "CUFE-SHA384" if etree.QName(invoice).localname == "Invoice" else "CUDE-SHA384"
-    return response_id, response_date, response_time, response_code, environment, key_scheme
+    key_scheme = _text(invoice, "/*/*[local-name()='UUID'][1]/@schemeName")
+    if key_scheme not in {"CUFE-SHA384", "CUDE-SHA384"}:
+        raise ValueError("Signed source document has an invalid CUFE/CUDE scheme")
+    return response_id, response_date, response_time, response_code, environment, key_scheme, invoice
+
+
+def _source_party(
+    invoice: etree._Element, *, role: str, name: str, identifier: str,
+    document_type: str, dv: str | None, responsibility: str | None,
+) -> tuple[str, str, str]:
+    path = (f"/*/*[local-name()='Accounting{role}Party']/*[local-name()='Party']"
+            "/*[local-name()='PartyTaxScheme']")
+    parties = cast(list[etree._Element], invoice.xpath(path))
+    if len(parties) != 1:
+        raise ValueError(f"Signed source must contain exactly one {role} PartyTaxScheme")
+    party = parties[0]
+    source_identity = (
+        _text(party, "*[local-name()='RegistrationName']"),
+        _text(party, "*[local-name()='CompanyID']"),
+        _text(party, "*[local-name()='CompanyID']/@schemeName"),
+    )
+    if source_identity != (name, identifier, document_type):
+        raise ValueError(f"AttachedDocument {role} identity contradicts the signed source")
+    if (dv is not None or document_type == "31") and (
+        _text(party, "*[local-name()='CompanyID']/@schemeID") != (dv or "")
+    ):
+        raise ValueError(f"AttachedDocument {role} DV contradicts the signed source")
+    nodes = party.findall(cbc("TaxLevelCode"))
+    if len(nodes) > 1:
+        raise ValueError(f"Signed {role} has multiple TaxLevelCode elements")
+    if not nodes:
+        if role == "Customer":
+            raise ValueError(
+                "ATTACHED_DOCUMENT_BUYER_RESPONSIBILITY_UNRESOLVED: signed source has no "
+                "buyer TaxLevelCode; AE28 requires it. No officially supported unknown-value "
+                "representation has been established. Electronic delivery is blocked; "
+                "do not invent R-99-PN or rewrite the signed document."
+            )
+        raise ValueError("Signed source is missing issuer TaxLevelCode")
+    source_level = validate_responsibilities(nodes[0].text or "")
+    asserted_level = validate_responsibilities(responsibility)
+    if asserted_level is not None and asserted_level != source_level:
+        raise ValueError(f"AttachedDocument {role} tax_level_code contradicts the signed source")
+    scheme_id = _text(party, "*[local-name()='TaxScheme']/*[local-name()='ID']")
+    scheme_name = _text(party, "*[local-name()='TaxScheme']/*[local-name()='Name']")
+    validate_tax_scheme(scheme_id, scheme_name)
+    assert source_level is not None
+    return source_level, scheme_id, scheme_name
 
 
 def _party(
@@ -109,6 +161,8 @@ def _party(
     dv: str | None,
     document_type: str,
     tax_level: str,
+    tax_scheme_id: str,
+    tax_scheme_name: str,
     email: str | None = None,
 ) -> None:
     tax = _sub(parent, cac("PartyTaxScheme"))
@@ -121,10 +175,10 @@ def _party(
     if dv:
         attrs["schemeID"] = dv
     _sub(tax, cbc("CompanyID"), nit, **attrs)
-    _sub(tax, cbc("TaxLevelCode"), tax_level, listName="05")
+    _sub(tax, cbc("TaxLevelCode"), tax_level, listName="No aplica")
     scheme = _sub(tax, cac("TaxScheme"))
-    _sub(scheme, cbc("ID"), "01")
-    _sub(scheme, cbc("Name"), "IVA")
+    _sub(scheme, cbc("ID"), tax_scheme_id)
+    _sub(scheme, cbc("Name"), tax_scheme_name)
     if email:
         contact = _sub(parent, cac("Contact"))
         _sub(contact, cbc("ElectronicMail"), email)
@@ -137,7 +191,11 @@ def _embedded_attachment(parent: etree._Element, filename: str, payload_base64: 
     _sub(external, cbc("EncodingCode"), "UTF-8")
     _sub(external, cbc("FileName"), filename)
     description = _sub(external, cbc("Description"))
-    description.text = etree.CDATA(base64.b64decode(payload_base64).decode("utf-8-sig"))
+    original = base64.b64decode(payload_base64, validate=True)
+    text = original.decode("utf-8")  # Preserve an original UTF-8 BOM, if present.
+    # XML 1.0 normalizes literal CR inside CDATA. Character references preserve
+    # those bytes through parsing/signing; ordinary UTF-8 documents use CDATA.
+    description.text = text if "\r" in text else etree.CDATA(text)
 
 
 def build_attached_document_xml(req: AttachedDocumentBuildRequest) -> bytes:
@@ -149,7 +207,17 @@ def build_attached_document_xml(req: AttachedDocumentBuildRequest) -> bytes:
         response_code,
         environment,
         key_scheme,
+        invoice,
     ) = _validate_sources(req)
+    issuer_level, issuer_scheme_id, issuer_scheme_name = _source_party(
+        invoice, role="Supplier", name=req.issuer_name, identifier=req.issuer_nit,
+        document_type="31", dv=req.issuer_dv, responsibility=req.issuer_tax_level_code,
+    )
+    receiver_level, receiver_scheme_id, receiver_scheme_name = _source_party(
+        invoice, role="Customer", name=req.receiver_name, identifier=req.receiver_nit,
+        document_type=req.receiver_document_type, dv=req.receiver_dv,
+        responsibility=req.receiver_tax_level_code,
+    )
 
     root = etree.Element(attached("AttachedDocument"), nsmap=NSMAP_ATTACHED_DOCUMENT)
     extensions = _sub(root, ext("UBLExtensions"))
@@ -173,7 +241,9 @@ def build_attached_document_xml(req: AttachedDocumentBuildRequest) -> bytes:
         nit=req.issuer_nit,
         dv=req.issuer_dv,
         document_type="31",
-        tax_level=req.issuer_tax_level_code,
+        tax_level=issuer_level,
+        tax_scheme_id=issuer_scheme_id,
+        tax_scheme_name=issuer_scheme_name,
     )
     receiver = _sub(root, cac("ReceiverParty"))
     _party(
@@ -182,7 +252,9 @@ def build_attached_document_xml(req: AttachedDocumentBuildRequest) -> bytes:
         nit=req.receiver_nit,
         dv=req.receiver_dv,
         document_type=req.receiver_document_type,
-        tax_level=req.receiver_tax_level_code,
+        tax_level=receiver_level,
+        tax_scheme_id=receiver_scheme_id,
+        tax_scheme_name=receiver_scheme_name,
         email=req.receiver_email,
     )
 

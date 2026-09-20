@@ -16,10 +16,23 @@ SIGNED_XML_BASE64 = base64.b64encode(b"<Signed>ok</Signed>").decode("ascii")
 INVOICE_XML_BASE64 = base64.b64encode(
     f'''<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
       xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"
-      xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+      xmlns:ds="http://www.w3.org/2000/09/xmldsig#"
+      xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2">
       <cbc:ProfileExecutionID>2</cbc:ProfileExecutionID><cbc:ID>FDK000001</cbc:ID>
-      <cbc:UUID>{DOCUMENT_KEY_EXAMPLE}</cbc:UUID><cbc:IssueDate>2026-04-01</cbc:IssueDate>
-      <cbc:IssueTime>14:30:00-05:00</cbc:IssueTime><ds:Signature/>
+      <cbc:UUID schemeName="CUFE-SHA384">{DOCUMENT_KEY_EXAMPLE}</cbc:UUID><cbc:IssueDate>2026-04-01</cbc:IssueDate>
+      <cbc:IssueTime>14:30:00-05:00</cbc:IssueTime><cbc:InvoiceTypeCode>01</cbc:InvoiceTypeCode>
+      <cac:AccountingSupplierParty><cac:Party><cac:PartyTaxScheme>
+        <cbc:RegistrationName>Example Issuer SAS</cbc:RegistrationName>
+        <cbc:CompanyID schemeName="31" schemeID="8">900123456</cbc:CompanyID>
+        <cbc:TaxLevelCode>O-47</cbc:TaxLevelCode>
+        <cac:TaxScheme><cbc:ID>01</cbc:ID><cbc:Name>IVA</cbc:Name></cac:TaxScheme>
+      </cac:PartyTaxScheme></cac:Party></cac:AccountingSupplierParty>
+      <cac:AccountingCustomerParty><cac:Party><cac:PartyTaxScheme>
+        <cbc:RegistrationName>Cliente Demo SAS</cbc:RegistrationName>
+        <cbc:CompanyID schemeName="31" schemeID="4">800199436</cbc:CompanyID>
+        <cbc:TaxLevelCode>R-99-PN</cbc:TaxLevelCode>
+        <cac:TaxScheme><cbc:ID>01</cbc:ID><cbc:Name>IVA</cbc:Name></cac:TaxScheme>
+      </cac:PartyTaxScheme></cac:Party></cac:AccountingCustomerParty><ds:Signature/>
     </Invoice>'''.encode()
 ).decode("ascii")
 DIAN_AR_XML_BASE64 = base64.b64encode(
@@ -474,7 +487,7 @@ NUMBERING_RANGE_LOOKUP_RESPONSE_EXAMPLE = {
 
 HEALTH_RESPONSE_EXAMPLE = {
     "status": "ok",
-    "version": "0.2.0a0",
+    "version": "0.2.0a1",
     "dian_environment": "habilitacion",
     "certificate_loaded": True,
     "certificate_valid_until": "2027-12-31T23:59:59+00:00",
