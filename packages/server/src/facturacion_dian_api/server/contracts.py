@@ -735,6 +735,9 @@ class EventOptionsInput(BaseModel):
 
     software_id: str | None = None
     software_pin: str | None = None
+    prepare_only: bool = False
+    reconcile_only: bool = False
+    signed_event_xml_filename: str | None = None
     signed_event_xml_base64: str | None = Field(
         default=None,
         description="Exact signed event XML returned by a prior uncertain attempt",
@@ -759,13 +762,21 @@ class EventReceiverPersonInput(BaseModel):
     organization_department: str | None = None
 
 
+class EventIssuerInput(BaseModel):
+    """Identity of the invoice receiver that signs the event."""
+
+    nit: str = Field(pattern=r"^\d{1,15}$")
+    dv: str = Field(pattern=r"^\d$")
+    name: str = Field(min_length=1)
+    additional_account_id: Literal["1", "2"]
+
+
 class EmitEventRequest(BaseModel):
     """Public request contract to register a RADIAN receiver event.
 
-    The identity of whoever emits the event (the invoice receiver) comes from
-    the deployment's ``COMPANY_*`` configuration, never from the body: one
-    deployment = one issuer (AGENTS.md § 3). Only the counterpart — the
-    supplier that issued the referenced invoice — travels in the request.
+    The invoice receiver supplies its complete event identity in ``issuer``.
+    Omitting it preserves the historical COMPANY_* fallback. The deployment
+    still has a single signing certificate; request data never replaces it.
     """
 
     model_config = ConfigDict(
@@ -784,6 +795,7 @@ class EmitEventRequest(BaseModel):
     event_type: EventType = Field(
         description="030 acuse | 031 reclamo | 032 recibo del bien | 033 aceptacion expresa"
     )
+    issuer: EventIssuerInput | None = None
     environment: Environment | None = None
     event_number: str | None = Field(
         default=None,
@@ -822,9 +834,14 @@ class EmitEventRequest(BaseModel):
             _validate_iso_date(self.event_issue_date, "event_issue_date")
         if self.event_issue_time is not None and not ISSUE_TIME_PATTERN.fullmatch(self.event_issue_time):
             raise ValueError("event_issue_time must use HH:MM:SS-05:00")
-        if self.event_issue_date is not None and not self.submission_options.signed_event_xml_base64:
+        options = self.submission_options
+        if options.prepare_only and options.reconcile_only:
+            raise ValueError("prepare_only and reconcile_only are mutually exclusive")
+        if options.reconcile_only and not options.signed_event_xml_base64:
+            raise ValueError("reconcile_only requires the original signed event")
+        if self.event_issue_date is not None and not options.signed_event_xml_base64 and not options.prepare_only:
             raise ValueError(
-                "event_issue_date and event_issue_time are only permitted for a signed event retry"
+                "event_issue_date and event_issue_time require preparation or a signed event retry"
             )
         if (
             self.submission_options.signed_event_xml_base64
