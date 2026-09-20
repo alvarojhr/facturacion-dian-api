@@ -8,6 +8,8 @@ copy their manifest to release/manifest.json only after reviewing the artifacts.
 from __future__ import annotations
 
 import argparse
+import base64
+import csv
 import hashlib
 import importlib.metadata
 import json
@@ -16,9 +18,11 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import tomllib
-from io import BytesIO
+from io import BytesIO, StringIO
 from pathlib import Path
+from zipfile import ZIP_STORED, ZipFile, ZipInfo
 
 REPO = Path(__file__).resolve().parents[1]
 BUILD_TOOLS = {"setuptools": "80.9.0", "wheel": "0.48.0", "packaging": "25.0"}
@@ -34,6 +38,37 @@ def git_bytes(spec: str) -> bytes:
 
 def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def canonicalize_wheel(path: Path, epoch: int) -> None:
+    """Fix container metadata across operating systems; preserve all code bytes.
+
+    Setuptools emits platform-specific METADATA line endings and ZIP permissions.
+    Store uncompressed members to avoid zlib-version-dependent hashes as well.
+    RECORD must describe the final metadata bytes, as required by the wheel format.
+    """
+    with ZipFile(path) as archive:
+        files = {name: archive.read(name) for name in archive.namelist()}
+    record = next(name for name in files if name.endswith(".dist-info/RECORD"))
+    del files[record]
+    for name in files:
+        if name.endswith(".dist-info/METADATA"):
+            files[name] = files[name].replace(b"\r\n", b"\n")
+    rows = StringIO(newline="")
+    writer = csv.writer(rows, lineterminator="\n")
+    for name, data in sorted(files.items()):
+        digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(b"=").decode()
+        writer.writerow((name, "sha256=" + digest, len(data)))
+    writer.writerow((record, "", ""))
+    files[record] = rows.getvalue().encode("utf-8")
+    result = BytesIO()
+    with ZipFile(result, "w", compression=ZIP_STORED) as archive:
+        for name, data in sorted(files.items()):
+            info = ZipInfo(name, date_time=time.gmtime(max(epoch, 315532800))[:6])
+            info.create_system = 3
+            info.external_attr = 0o100644 << 16
+            archive.writestr(info, data)
+    path.write_bytes(result.getvalue())
 
 
 def main() -> None:
@@ -92,6 +127,8 @@ def main() -> None:
                 )
                 if result.returncode:
                     raise SystemExit(result.stdout + result.stderr)
+            for wheel in destination.glob("*.whl"):
+                canonicalize_wheel(wheel, int(epoch))
         wheels = {p.name: sha256(p.read_bytes()) for p in sorted((work / "one/dist").glob("*.whl"))}
         repeated = {p.name: sha256(p.read_bytes()) for p in sorted((work / "two/dist").glob("*.whl"))}
         if len(wheels) != 2 or wheels != repeated or len(set(versions.values())) != 1:
@@ -99,6 +136,7 @@ def main() -> None:
         manifest = {
             "commit": commit, "package_tree": package_tree, "source_date_epoch": int(epoch),
             "versions": versions, "build_tools": actual_tools, "python_minor": "3.12",
+            "wheel_format": "canonical-zip-v1",
             "requirements_lock_sha256": sha256(lock), "sha256": wheels,
             "repeated_build_identical": True, "committed_source_sha256": source_hashes,
         }

@@ -31,6 +31,10 @@ Debe obtener los mismos hashes revisados en `release/manifest.json`. Rechaza
 cambios de runtime posteriores a ese manifiesto.
 La comprobación del árbol permite integrar mediante squash sin depender de que
 el commit original del candidato siga accesible.
+El empaquetado fija los permisos y atributos ZIP, usa LF en el `METADATA`
+generado y recalcula `RECORD`. Los archivos Python se conservan byte por byte.
+Los miembros ZIP se guardan sin compresión para no depender de la versión de
+zlib; las capas de la imagen sí se comprimen normalmente.
 
 Para preparar una versión nueva: cambia las versiones de core/server y sus
 metadatos, valida y registra el código en Git; ejecuta el script con
