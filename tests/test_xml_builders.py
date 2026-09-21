@@ -780,7 +780,7 @@ class TestInvoiceBuilderTaxes:
         root = build_invoice_xml(excluded_request, FAKE_CUFE)
         assert _xpath(root, "cac:TaxTotal") == []
         assert _xpath_text(root, "cac:LegalMonetaryTotal/cbc:LineExtensionAmount") == "100000.00"
-        assert _xpath_text(root, "cac:LegalMonetaryTotal/cbc:TaxExclusiveAmount") == "100000.00"
+        assert _xpath_text(root, "cac:LegalMonetaryTotal/cbc:TaxExclusiveAmount") == "0.00"
         assert _xpath_text(root, "cac:LegalMonetaryTotal/cbc:TaxInclusiveAmount") == "100000.00"
 
     def test_excluded_lines_are_ignored_in_mixed_document_tax_totals(
@@ -826,7 +826,7 @@ class TestInvoiceBuilderTaxes:
         assert _xpath_text(root, "cac:TaxTotal/cbc:TaxAmount") == "9500.00"
         assert _xpath_text(root, "cac:TaxTotal/cac:TaxSubtotal/cbc:TaxableAmount") == "50000.00"
         assert _xpath_text(root, "cac:LegalMonetaryTotal/cbc:LineExtensionAmount") == "100000.00"
-        assert _xpath_text(root, "cac:LegalMonetaryTotal/cbc:TaxExclusiveAmount") == "100000.00"
+        assert _xpath_text(root, "cac:LegalMonetaryTotal/cbc:TaxExclusiveAmount") == "50000.00"
         assert _xpath_text(root, "cac:LegalMonetaryTotal/cbc:TaxInclusiveAmount") == "109500.00"
 
 

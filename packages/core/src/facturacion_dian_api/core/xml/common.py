@@ -653,6 +653,25 @@ def _line_extension_amount(lines: list[DocumentLine]) -> Decimal:
     return sum((line.line_total for line in lines), Decimal("0"))
 
 
+def _tax_exclusive_amount(lines: list[DocumentLine], *, first_tax_only: bool = False) -> Decimal:
+    """Suma las bases emitidas en TaxTotal/TaxSubtotal de las líneas (FAU04).
+
+    Los excluidos no emiten TaxTotal; las retenciones se emiten por separado.
+    CAU04/NAAU04 usan sólo el primer TaxTotal de cada CreditNoteLine.
+    Conservar las bases explícitas, incluso cero, y el orden emitido.
+    Esta base no es el valor comercial ni interviene en el total a pagar.
+    """
+    amount = Decimal("0")
+    for line in lines:
+        for tax in line.taxes:
+            if tax.tax_type == "EXCLUDED" or _tax_definition(tax).get("withholding"):
+                continue
+            amount += tax.taxable_amount if tax.taxable_amount is not None else line.line_total
+            if first_tax_only:
+                break
+    return amount
+
+
 def build_allowance_charges(parent: etree._Element, entries: list[AllowanceCharge]) -> None:
     """Emit UBL allowance/charge blocks in the order supplied by the ERP."""
     for index, entry in enumerate(entries, start=1):
@@ -675,8 +694,11 @@ def build_legal_monetary_total(
 ) -> None:
     """Build cac:LegalMonetaryTotal element."""
     line_extension_amount = _line_extension_amount(req.lines)
-    tax_exclusive_amount = req.subtotal - req.allowance_total + req.charge_total
-    tax_inclusive_amount = tax_exclusive_amount + req.tax_total
+    tax_exclusive_amount = _tax_exclusive_amount(
+        req.lines, first_tax_only=etree.QName(parent).localname == "CreditNote",
+    )
+    # FAU06/CAU06: valor comercial de las líneas más tributos, antes de ajustes globales.
+    tax_inclusive_amount = line_extension_amount + req.tax_total
     lmt = _sub(parent, cac("LegalMonetaryTotal"))
     _sub(
         lmt,
@@ -706,8 +728,8 @@ def build_requested_monetary_total(
 ) -> None:
     """Build cac:RequestedMonetaryTotal for DebitNote documents."""
     line_extension_amount = _line_extension_amount(req.lines)
-    tax_exclusive_amount = req.subtotal - req.allowance_total + req.charge_total
-    tax_inclusive_amount = tax_exclusive_amount + req.tax_total
+    tax_exclusive_amount = _tax_exclusive_amount(req.lines)
+    tax_inclusive_amount = line_extension_amount + req.tax_total
     rmt = _sub(parent, cac("RequestedMonetaryTotal"))
     _sub(
         rmt,

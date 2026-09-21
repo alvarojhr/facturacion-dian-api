@@ -10,9 +10,11 @@ from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from facturacion_dian_api.core.submission import _build_document_xml, _compute_document_codes
 from facturacion_dian_api.server.app import app
 from facturacion_dian_api.server.contracts import DocumentSubmissionRequest
 from facturacion_dian_api.server.examples import DOCUMENT_SUBMISSION_INVOICE_EXAMPLE
+from facturacion_dian_api.server.mappers import to_core_submission_request
 from fastapi.testclient import TestClient
 
 
@@ -37,7 +39,23 @@ def main() -> None:
     schema = client.get("/openapi.json").json()
     assert schema["info"]["version"] == version
     assert "receiver_tax_level_code" not in schema["components"]["schemas"]["AttachedDocumentRequest"].get("required", [])
-    print(json.dumps({"version": version, "health": "valid/expiring/missing OK", "partial_buyer": "OK"}))
+    # Verificar FAU04 en los bytes instalados, además de la suite del checkout.
+    payload["line_items"] = [{
+        "description": "Artículo excluido de prueba", "item_code": "QA-EXCLUDED",
+        "quantity": "22", "unit_price": "1850", "line_total": "40700",
+        "tax_type": "EXCLUDED", "tax_amount": "0",
+    }]
+    payload["totals"] = {"subtotal": "40700", "tax_total": "0", "total": "40700"}
+    core = to_core_submission_request(DocumentSubmissionRequest.model_validate(payload))
+    key, qr = _compute_document_codes(core)
+    root = _build_document_xml(core, key, qr)
+    expected = {"LineExtensionAmount": "40700.00", "TaxExclusiveAmount": "0.00",
+                "TaxInclusiveAmount": "40700.00", "PayableAmount": "40700.00"}
+    for name, value in expected.items():
+        assert root.xpath(f"string(*[local-name()='LegalMonetaryTotal']/*[local-name()='{name}'])") == value
+    assert not root.xpath("//*[local-name()='TaxTotal']")
+    print(json.dumps({"version": version, "health": "valid/expiring/missing OK",
+                      "partial_buyer": "OK", "excluded_tax_base": "0; payable 40700 OK"}))
 
 
 if __name__ == "__main__":
