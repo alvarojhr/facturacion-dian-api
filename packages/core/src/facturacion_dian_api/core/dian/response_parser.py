@@ -110,9 +110,22 @@ class DianResponse:
         )
 
     @property
+    def is_in_process(self) -> bool:
+        """DIAN StatusCode 98 "En Proceso": received, verdict still pending.
+
+        ``IsValid`` comes back false only because DIAN has not decided yet; the
+        00/99 verdict arrives later through GetStatus. Treating it as a rejection
+        made every invoice look definitively rejected on 2026-09-22.
+        """
+        return self.status_code == "98"
+
+    @property
     def is_rejected(self) -> bool:
         return self.is_test_set_rejected or (
-            self.validation_result_present and not self.is_valid and not self.is_test_set_accepted
+            self.validation_result_present
+            and not self.is_valid
+            and not self.is_test_set_accepted
+            and not self.is_in_process
         )
 
     @property
@@ -131,6 +144,8 @@ class DianResponse:
         """Normalize DIAN's sync and async responses without inventing acceptance."""
         if self.is_accepted:
             return "accepted"
+        if self.is_in_process:
+            return "pending"
         if self.is_rejected:
             return "rejected"
         if self.is_error:

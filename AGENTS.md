@@ -205,6 +205,13 @@ estable:
 Un rechazo **funcional** de DIAN es `200` con `status="rejected"` en el cuerpo, no
 un error HTTP. No conviertas rechazos funcionales en 4xx/5xx.
 
+`IsValid=false` **no basta** para declarar rechazo: la DIAN responde `StatusCode 98`
+/ `"En Proceso"` con `IsValid=false` cuando recibió el documento y todavía no
+dicta; el veredicto (00/99) llega por GetStatus. `DianResponse.is_in_process` lo
+reporta como `status="pending"`. Cicatriz 2026-09-22: desde las 21:20 la DIAN
+respondió 98 a todo `SendBillSync` y el consumidor marcó 34 facturas como rechazo
+definitivo con sólo notificaciones (0.2.0a5).
+
 ---
 
 ## 8. Frontera `core` / `server`

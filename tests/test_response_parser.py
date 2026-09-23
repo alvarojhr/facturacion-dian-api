@@ -55,6 +55,51 @@ def test_processed_text_without_validation_is_unknown() -> None:
     assert response.processing_status == "unknown"
 
 
+def test_status_98_en_proceso_is_pending_not_rejected() -> None:
+    """Real SendBillSync answer for FEC578 (2026-09-22): only notifications."""
+    response_xml = """<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">
+  <s:Body>
+    <SendBillSyncResponse xmlns="http://wcf.dian.colombia">
+      <SendBillSyncResult xmlns:b="http://schemas.datacontract.org/2004/07/DianResponse"
+        xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+        <b:ErrorMessage xmlns:c="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
+          <c:string>Regla: FAK26, Notificación: Responsabilidad informada para receptor no válido según lista</c:string>
+          <c:string>Regla: RUT01, Notificación: La validación del estado del RUT próximamente estará disponible.</c:string>
+        </b:ErrorMessage>
+        <b:IsValid>false</b:IsValid>
+        <b:StatusCode>98</b:StatusCode>
+        <b:StatusDescription>En Proceso</b:StatusDescription>
+        <b:StatusMessage/>
+        <b:XmlBase64Bytes i:nil="true"/>
+        <b:XmlBytes i:nil="true"/>
+        <b:XmlDocumentKey>d43d904bbb01f3ad</b:XmlDocumentKey>
+        <b:XmlFileName>fv0091179386000260000001d</b:XmlFileName>
+      </SendBillSyncResult>
+    </SendBillSyncResponse>
+  </s:Body>
+</s:Envelope>""".encode()
+
+    response = parse_send_bill_response(response_xml)
+
+    assert response.is_valid is False
+    assert response.is_in_process is True
+    assert response.is_rejected is False
+    assert response.processing_status == "pending"
+
+
+def test_status_99_with_invalid_document_is_still_rejected() -> None:
+    response = DianResponse(
+        is_valid=False,
+        validation_result_present=True,
+        status_code="99",
+        status_description="Validación contiene errores en campos mandatorios.",
+        error_messages=["Regla: FAD05e, Rechazo: Número no existe para la autorización"],
+    )
+
+    assert response.is_rejected is True
+    assert response.processing_status == "rejected"
+
+
 def test_parse_get_acquirer_response() -> None:
     response_xml = b"""<?xml version="1.0" encoding="utf-8"?>
 <s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">

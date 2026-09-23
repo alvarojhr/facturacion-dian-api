@@ -19,7 +19,7 @@ def _package_version() -> str:
     try:
         return version("facturacion-dian-api-server")
     except PackageNotFoundError:
-        return "0.2.0a4"
+        return "0.2.0a5"
 
 
 @router.get(

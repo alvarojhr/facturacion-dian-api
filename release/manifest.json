@@ -1,10 +1,10 @@
 {
-  "commit": "e813a5bc112090073971f635221002dc5dc330e3",
-  "package_tree": "58be4353cde7330bcd03cec296142d677cda370e",
-  "source_date_epoch": 1789962844,
+  "commit": "2919d0a46370c415ad8eae83c0081a1a3e593019",
+  "package_tree": "b8b1c2dfd086fa4f965de54ce85bac4a862df48b",
+  "source_date_epoch": 1790134373,
   "versions": {
-    "core": "0.2.0a4",
-    "server": "0.2.0a4"
+    "core": "0.2.0a5",
+    "server": "0.2.0a5"
   },
   "build_tools": {
     "setuptools": "80.9.0",
@@ -15,8 +15,8 @@
   "wheel_format": "canonical-zip-v1",
   "requirements_lock_sha256": "b1dae1ec2d51b4c2de2308b4eb68ff344ef160e0a9aaafe4a7809a87148ac8ec",
   "sha256": {
-    "facturacion_dian_api_core-0.2.0a4-py3-none-any.whl": "0830d49aebb1ea21a6ef8cfa4322017d90581d414146e30adf02342d81f4ded4",
-    "facturacion_dian_api_server-0.2.0a4-py3-none-any.whl": "2bf26d96bafa0adadb6858c6951081d6ccfb751363afa5a172ea3b455126f2c3"
+    "facturacion_dian_api_core-0.2.0a5-py3-none-any.whl": "a883878e27c51f7d3d3bdbde9a87b8b75eb702a7815f9654f1acd72000642452",
+    "facturacion_dian_api_server-0.2.0a5-py3-none-any.whl": "a3c572d7a36bb306bc57b6fa2e851f9a99b8e3c07a6db9133da487d93e592da0"
   },
   "repeated_build_identical": true,
   "committed_source_sha256": {
@@ -28,7 +28,7 @@
     "packages/core/src/facturacion_dian_api/core/dian/__init__.py": "e34e6965179353624e21cd5016be5b547c79e0653f44a291225eea0634c6af3c",
     "packages/core/src/facturacion_dian_api/core/dian/client.py": "1ff2b9ffde6fffd0a5ec2fdbc8b91350ae7ccc0110f7c399923a581b516cd5a3",
     "packages/core/src/facturacion_dian_api/core/dian/envelope.py": "551fb03ac53704df183beb867092c50ddecf1e04aefbc47fdfe578638fed2a9e",
-    "packages/core/src/facturacion_dian_api/core/dian/response_parser.py": "b39da4da28c53bfdf066f7d2dfbdb08e343081f93e5398c31b5dc4c4bd8ffe87",
+    "packages/core/src/facturacion_dian_api/core/dian/response_parser.py": "fab4f71717182fe26ca09d050dc490f474990fb5dab5a26608afd467217e29bc",
     "packages/core/src/facturacion_dian_api/core/errors.py": "9597c83b061d58b1bfb0caea5b45517c025420832b918d222ce8ef57b420fb6d",
     "packages/core/src/facturacion_dian_api/core/events.py": "7b9f9e1648efa136b1525b8787266e315a55b7b63dfba1ab9290f632e48bd718",
     "packages/core/src/facturacion_dian_api/core/filenames.py": "15d398b63b6c2bd6dde6ad6d3739ec589223111beacb7ab30df4eb6e5d0bd8d3",
@@ -54,11 +54,11 @@
     "packages/server/src/facturacion_dian_api/server/api/customers.py": "bf4f57c05fb83030342abf8676435afe6021e9a74afaa70247763869235ea607",
     "packages/server/src/facturacion_dian_api/server/api/documents.py": "800c00fe0f3d1a26e5e6c46e41e866a8157718d818970852cedc34bafa9ce47d",
     "packages/server/src/facturacion_dian_api/server/api/events.py": "2be9385e32d005c489ca254045446759f8552d1e145165b0d0ce514d5e3b2a86",
-    "packages/server/src/facturacion_dian_api/server/api/health.py": "d70f1b1c91750ebc7de0a9761226c0bc3bff09ebac65595c2fcf82cb4131ef55",
+    "packages/server/src/facturacion_dian_api/server/api/health.py": "4adb08400f2dab172b41764b873333a268be4f50628886fae077eb4f6b5f0585",
     "packages/server/src/facturacion_dian_api/server/api/numbering_ranges.py": "536086b07638aa51338e674709b0162fc40fbc4e6ef8d3c441c20ecca53c7b01",
-    "packages/server/src/facturacion_dian_api/server/app.py": "4f211dcabf75f05529ccd640d2f6c5f70f5a4faff13b72ee6293e3b35cb8cb40",
+    "packages/server/src/facturacion_dian_api/server/app.py": "81b54df7d28931282c36b9383634d318cefa436ec6ed42643e0a1132c40de782",
     "packages/server/src/facturacion_dian_api/server/contracts.py": "5bb81de6bfe308ce9e2146cce8bce2a787ba25f6ea80ce8e2e1af4c9f1b4cbe2",
-    "packages/server/src/facturacion_dian_api/server/examples.py": "20af9dee9a4b82c4432c1a81a34a49d42c7debd2cad87d4ae5fb6ba43fc4f4af",
+    "packages/server/src/facturacion_dian_api/server/examples.py": "e09b417ae33e97f5300c0b3356a717594520c4f5499e0959e196821469a4bdbb",
     "packages/server/src/facturacion_dian_api/server/mappers.py": "bd39b210722e368f8a5660b03bb839122393daf2146f869fa4770c8eb129b76e",
     "packages/server/src/facturacion_dian_api/server/settings.py": "eac5680d297af4a22d397ae08d1a49855c0e3b027ee4426c8a364363ff4fd2eb"
   }
