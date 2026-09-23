@@ -1,11 +1,11 @@
 [project]
 name = "facturacion-dian-api-server"
-version = "0.2.0a4"
+version = "0.2.0a5"
 description = "FastAPI HTTP server for facturacion-dian-api"
 license = {text = "Apache-2.0"}
 requires-python = ">=3.12"
 dependencies = [
-    "facturacion-dian-api-core==0.2.0a4",
+    "facturacion-dian-api-core==0.2.0a5",
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.34.0",
 ]
