@@ -289,7 +289,19 @@ Otras trampas del `ApplicationResponse` (`core/xml/application_response_builder.
   como `SendBillSync` falla en el WCF de la DIAN.
 - El `034` (aceptación tácita) **no se implementa**: lo registra el emisor.
 
-## 12. Convenciones
+## 12. AE28 del contenedor: nunca inventar
+
+Con `receiver_tax_level_source=SIGNED_DOCUMENT` (default) AE28 sale **sólo** del
+XML firmado. Si la factura omitió FAK26, la respuesta es 422
+`ATTACHED_DOCUMENT_BUYER_RESPONSIBILITY_UNRESOLVED`, aunque el caller envíe
+R-99-PN. `BUYER_RUT` (0.2.0a6) es la única forma de llenar ese hueco: el emisor
+declara que tiene el RUT del comprador. Nunca reemplaza un TaxLevelCode firmado,
+no toca la factura embebida y copia el tributo del original. No lo conviertas en
+default ni en fallback automático. La responsabilidad **desconocida** sigue sin
+representación oficial (consulta DIAN abierta, ver
+`docs/contenedor-responsabilidad-rut-020a6.md`).
+
+## 13. Convenciones
 
 ### Imagen y paquetes aprobados
 

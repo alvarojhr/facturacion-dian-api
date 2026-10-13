@@ -85,6 +85,11 @@ aparente estar listo para entregar. Hace falta una aclaración oficial aplicable
 AE28 o una representación respaldada por DIAN; R-99-PN, un elemento vacío y la
 omisión no se aceptan como soluciones inferidas.
 
+Desde 0.2.0a6, un emisor que obtuvo el RUT del comprador puede declararlo con
+`receiver_tax_level_source=BUYER_RUT`. AE28 lleva entonces las responsabilidades
+transcritas del RUT, sólo si el original las omitió. Ver
+[contenedor con responsabilidad respaldada por RUT](contenedor-responsabilidad-rut-020a6.md).
+
 Con responsabilidades conocidas se genera y firma el contenedor y se empaqueta
 en ZIP. La factura y el AR se verifican criptográficamente y se conservan byte a
 byte, incluidas firma, huella y referencias. La información del contenedor se
