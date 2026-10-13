@@ -112,6 +112,7 @@ def _validate_sources(
 def _source_party(
     invoice: etree._Element, *, role: str, name: str, identifier: str,
     document_type: str, dv: str | None, responsibility: str | None,
+    responsibility_source: str = "SIGNED_DOCUMENT",
 ) -> tuple[str, str, str]:
     path = (f"/*/*[local-name()='Accounting{role}Party']/*[local-name()='Party']"
             "/*[local-name()='PartyTaxScheme']")
@@ -133,21 +134,36 @@ def _source_party(
     nodes = party.findall(cbc("TaxLevelCode"))
     if len(nodes) > 1:
         raise ValueError(f"Signed {role} has multiple TaxLevelCode elements")
+    asserted_level = validate_responsibilities(responsibility)
+    scheme_id = _text(party, "*[local-name()='TaxScheme']/*[local-name()='ID']")
+    scheme_name = _text(party, "*[local-name()='TaxScheme']/*[local-name()='Name']")
+    if responsibility_source == "BUYER_RUT":
+        # The issuer declares the buyer's RUT responsibilities for a source that legitimately
+        # omitted FAK26. Only a missing AE28 is filled; signed facts are never replaced.
+        if role != "Customer":
+            raise ValueError("BUYER_RUT applies only to the receiver party")
+        if nodes:
+            raise ValueError(
+                "ATTACHED_DOCUMENT_BUYER_RUT_NOT_APPLICABLE: signed source already declares "
+                "the buyer TaxLevelCode; the container copies it and cannot replace it"
+            )
+        if asserted_level is None:
+            raise ValueError("BUYER_RUT requires receiver_tax_level_code")
+        validate_tax_scheme(scheme_id, scheme_name)
+        return asserted_level, scheme_id, scheme_name
     if not nodes:
         if role == "Customer":
             raise ValueError(
                 "ATTACHED_DOCUMENT_BUYER_RESPONSIBILITY_UNRESOLVED: signed source has no "
                 "buyer TaxLevelCode; AE28 requires it. No officially supported unknown-value "
                 "representation has been established. Electronic delivery is blocked; "
-                "do not invent R-99-PN or rewrite the signed document."
+                "do not invent R-99-PN or rewrite the signed document. An issuer holding the "
+                "buyer's RUT may declare receiver_tax_level_source=BUYER_RUT."
             )
         raise ValueError("Signed source is missing issuer TaxLevelCode")
     source_level = validate_responsibilities(nodes[0].text or "")
-    asserted_level = validate_responsibilities(responsibility)
     if asserted_level is not None and asserted_level != source_level:
         raise ValueError(f"AttachedDocument {role} tax_level_code contradicts the signed source")
-    scheme_id = _text(party, "*[local-name()='TaxScheme']/*[local-name()='ID']")
-    scheme_name = _text(party, "*[local-name()='TaxScheme']/*[local-name()='Name']")
     validate_tax_scheme(scheme_id, scheme_name)
     assert source_level is not None
     return source_level, scheme_id, scheme_name
@@ -217,6 +233,7 @@ def build_attached_document_xml(req: AttachedDocumentBuildRequest) -> bytes:
         invoice, role="Customer", name=req.receiver_name, identifier=req.receiver_nit,
         document_type=req.receiver_document_type, dv=req.receiver_dv,
         responsibility=req.receiver_tax_level_code,
+        responsibility_source=req.receiver_tax_level_source,
     )
 
     root = etree.Element(attached("AttachedDocument"), nsmap=NSMAP_ATTACHED_DOCUMENT)

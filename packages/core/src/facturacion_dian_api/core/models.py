@@ -40,6 +40,7 @@ DocumentStatus = Literal[
     "prepared", "received", "pending", "accepted", "rejected", "unknown", "error"
 ]
 CustomerDocumentType = Literal["FINAL_CONSUMER", "NIT", "CC", "CE", "TI", "PASSPORT"]
+ReceiverTaxLevelSource = Literal["SIGNED_DOCUMENT", "BUYER_RUT"]
 TaxType = Literal[
     "IVA_19", "IVA_5", "IVA_0", "EXEMPT", "EXCLUDED", "INC", "ICA",
     "RETEIVA", "RETEFUENTE", "RETEICA", "RETECREE", "IC_PORCENTUAL",
@@ -405,6 +406,13 @@ class AttachedDocumentBuildRequest(BaseModel):
         default=None,
         description="Optional assertion against the signed source. AE28 requires a known source value.",
     )
+    receiver_tax_level_source: ReceiverTaxLevelSource = Field(
+        default="SIGNED_DOCUMENT",
+        description=(
+            "SIGNED_DOCUMENT copies AE28 from the signed source. BUYER_RUT fills AE28 with "
+            "receiver_tax_level_code only when the signed source omitted it."
+        ),
+    )
     receiver_email: str | None = None
     reply_to_email: str
     company_name: str | None = None
@@ -423,6 +431,12 @@ class AttachedDocumentBuildRequest(BaseModel):
     @classmethod
     def validate_receiver_responsibilities(cls, value: str | None) -> str | None:
         return validate_responsibilities(value)
+
+    @model_validator(mode="after")
+    def validate_receiver_source(self) -> AttachedDocumentBuildRequest:
+        if self.receiver_tax_level_source == "BUYER_RUT" and self.receiver_tax_level_code is None:
+            raise ValueError("receiver_tax_level_source BUYER_RUT requires receiver_tax_level_code")
+        return self
 
 
 class AttachedDocumentBuildResponse(BaseModel):

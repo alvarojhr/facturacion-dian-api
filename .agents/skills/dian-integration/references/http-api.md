@@ -6,7 +6,7 @@ Endpoints oficiales:
 
 - `POST /api/v1/documents/submissions`
 - `GET /api/v1/documents/submissions/{tracking_id}`
-- `POST /api/v1/attached-documents`
+- `POST /api/v1/attached-documents` (AE28 se copia del XML firmado; si lo omitió y el emisor tiene el RUT del comprador, `receiver_tax_level_source=BUYER_RUT` + `receiver_tax_level_code`, desde 0.2.0a6)
 - `POST /api/v1/customers/lookup`
 - `POST /api/v1/numbering-ranges/lookup`
 - `POST /api/v1/documents/download-by-key`

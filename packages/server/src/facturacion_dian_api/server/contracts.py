@@ -586,6 +586,15 @@ class AttachedDocumentRequest(BaseModel):
         default=None,
         description="Optional assertion: copied from signed XML when present. If absent there, delivery fails explicitly (AE28); no invented fallback.",
     )
+    receiver_tax_level_source: Literal["SIGNED_DOCUMENT", "BUYER_RUT"] = Field(
+        default="SIGNED_DOCUMENT",
+        description=(
+            "SIGNED_DOCUMENT (default) copies AE28 from the signed XML. BUYER_RUT is an explicit "
+            "issuer declaration: the signed XML omitted the buyer responsibility and the issuer "
+            "holds the buyer's RUT; AE28 then carries receiver_tax_level_code. It never replaces "
+            "a value present in the signed XML. The caller keeps the RUT evidence."
+        ),
+    )
     receiver_email: str | None = None
     reply_to_email: str
     company_name: str | None = None
@@ -612,6 +621,8 @@ class AttachedDocumentRequest(BaseModel):
                 raise ValueError("receiver_dv is required for a NIT receiver")
             if self.receiver_dv != compute_nit_dv(self.receiver_nit):
                 raise ValueError("receiver_dv does not match receiver_nit")
+        if self.receiver_tax_level_source == "BUYER_RUT" and self.receiver_tax_level_code is None:
+            raise ValueError("receiver_tax_level_source BUYER_RUT requires receiver_tax_level_code")
         return self
 
 

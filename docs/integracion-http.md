@@ -91,6 +91,8 @@ Este flujo evita reconstruir otro documento después de un timeout. La API verif
 
 El request recibe el documento firmado por el emisor y el `ApplicationResponse` firmado por DIAN. El AR debe contener respuesta `02` y referenciar el mismo número y CUFE/CUDE. El servicio toma del AR el resultado, fecha y hora de validación, construye el contenedor y lo firma.
 
+AE28 (responsabilidades del comprador) se copia del documento firmado. Si el original las omitió y el emisor tiene el RUT del comprador, `receiver_tax_level_source=BUYER_RUT` con `receiver_tax_level_code` las declara sólo en el contenedor (0.2.0a6). Ver [contenedor con responsabilidad respaldada por RUT](contenedor-responsabilidad-rut-020a6.md).
+
 Payload canonico:
 
 - [AttachedDocument](examples/attached-document.json)

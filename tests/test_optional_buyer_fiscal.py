@@ -251,6 +251,51 @@ def test_unknown_responsibility_blocks_delivery_without_fabrication(client, real
     assert "content_base64" not in response.json()
 
 
+@pytest.mark.parametrize("level", ["R-99-PN", "O-13;O-15"])
+@pytest.mark.parametrize("scheme", [(None, None), ("01", "IVA")])
+def test_buyer_rut_fills_only_missing_ae28_and_preserves_signed_bytes(client, real_crypto, level, scheme):
+    payload = delivery_payload(client, real_crypto, None, scheme=scheme)
+    payload.update(receiver_tax_level_source="BUYER_RUT", receiver_tax_level_code=level)
+    response = client.post("/api/v1/attached-documents", json=payload)
+    assert response.status_code == 200, response.text
+    with ZipFile(BytesIO(base64.b64decode(response.json()["content_base64"]))) as archive:
+        root = etree.fromstring(archive.read(response.json()["xml_filename"]))
+    verify_document_signature(root, real_crypto)
+    check_xsd(root, "DIAN_FE_XSD_DIR")
+    receiver = "cac:ReceiverParty/cac:PartyTaxScheme/"
+    assert root.xpath(receiver + "cbc:TaxLevelCode/text()", namespaces=NS) == [level]
+    # Tributo: the signed fact (ZZ when the buyer had none), never the RUT.
+    assert root.xpath(receiver + "cac:TaxScheme/cbc:ID/text()", namespaces=NS) == [scheme[0] or "ZZ"]
+    embedded = root.xpath("//cac:ExternalReference/cbc:Description/text()", namespaces=NS)[0]
+    assert embedded.encode("utf-8") == base64.b64decode(payload["invoice_xml_base64"])
+    signed = etree.fromstring(embedded.encode("utf-8"))
+    verify_embedded_document_signature(signed)
+    assert not signed.xpath(BUYER + "cbc:TaxLevelCode", namespaces=NS)
+
+
+@pytest.mark.parametrize("level", ["R-99-PN", "O-13"])
+def test_buyer_rut_never_replaces_a_signed_responsibility(client, real_crypto, level):
+    payload = delivery_payload(client, real_crypto, "O-13")
+    payload.update(receiver_tax_level_source="BUYER_RUT", receiver_tax_level_code=level)
+    response = client.post("/api/v1/attached-documents", json=payload)
+    assert response.status_code == 422, response.text
+    assert "ATTACHED_DOCUMENT_BUYER_RUT_NOT_APPLICABLE" in response.json()["detail"]
+    assert "content_base64" not in response.json()
+
+
+@pytest.mark.parametrize("change", [
+    {"receiver_tax_level_source": "BUYER_RUT"},
+    {"receiver_tax_level_source": "BUYER_RUT", "receiver_tax_level_code": "O-99"},
+    {"receiver_tax_level_source": "GUESS", "receiver_tax_level_code": "R-99-PN"},
+])
+def test_buyer_rut_contract_rejects_incomplete_or_unknown_declarations(client, real_crypto, change):
+    payload = delivery_payload(client, real_crypto, None)
+    payload.update(change)
+    response = client.post("/api/v1/attached-documents", json=payload)
+    assert response.status_code == 422, response.text
+    assert "content_base64" not in response.json()
+
+
 @pytest.mark.parametrize("scheme", [(None, None), ("01", "IVA"), ("04", "INC"), ("ZA", "IVA e INC"), ("ZZ", "No aplica")])
 def test_container_and_zip_use_signed_facts_and_preserve_bytes(client, real_crypto, scheme):
     payload = delivery_payload(client, real_crypto, "O-13;O-15", scheme=scheme)
