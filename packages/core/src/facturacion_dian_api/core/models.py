@@ -6,6 +6,7 @@ from decimal import Decimal, localcontext
 from typing import Any, Literal, cast
 
 from facturacion_dian_api.core.buyer import (
+    UNKNOWN_RESPONSIBILITY_TAX_LEVEL,
     resolve_buyer_identity,
     validate_buyer_family,
     validate_responsibilities,
@@ -40,7 +41,7 @@ DocumentStatus = Literal[
     "prepared", "received", "pending", "accepted", "rejected", "unknown", "error"
 ]
 CustomerDocumentType = Literal["FINAL_CONSUMER", "NIT", "CC", "CE", "TI", "PASSPORT"]
-ReceiverTaxLevelSource = Literal["SIGNED_DOCUMENT", "BUYER_RUT"]
+ReceiverTaxLevelSource = Literal["SIGNED_DOCUMENT", "BUYER_RUT", "UNKNOWN_RESPONSIBILITY"]
 TaxType = Literal[
     "IVA_19", "IVA_5", "IVA_0", "EXEMPT", "EXCLUDED", "INC", "ICA",
     "RETEIVA", "RETEFUENTE", "RETEICA", "RETECREE", "IC_PORCENTUAL",
@@ -404,13 +405,17 @@ class AttachedDocumentBuildRequest(BaseModel):
     receiver_document_type: str
     receiver_tax_level_code: str | None = Field(
         default=None,
-        description="Optional assertion against the signed source. AE28 requires a known source value.",
+        description=(
+            "Optional assertion against the signed source. Required by BUYER_RUT, and exactly "
+            "R-99-PN for UNKNOWN_RESPONSIBILITY."
+        ),
     )
     receiver_tax_level_source: ReceiverTaxLevelSource = Field(
         default="SIGNED_DOCUMENT",
         description=(
-            "SIGNED_DOCUMENT copies AE28 from the signed source. BUYER_RUT fills AE28 with "
-            "receiver_tax_level_code only when the signed source omitted it."
+            "SIGNED_DOCUMENT copies AE28 from the signed source. BUYER_RUT and "
+            "UNKNOWN_RESPONSIBILITY fill AE28 with receiver_tax_level_code only when the "
+            "signed source omitted it."
         ),
     )
     receiver_email: str | None = None
@@ -436,6 +441,12 @@ class AttachedDocumentBuildRequest(BaseModel):
     def validate_receiver_source(self) -> AttachedDocumentBuildRequest:
         if self.receiver_tax_level_source == "BUYER_RUT" and self.receiver_tax_level_code is None:
             raise ValueError("receiver_tax_level_source BUYER_RUT requires receiver_tax_level_code")
+        if (self.receiver_tax_level_source == "UNKNOWN_RESPONSIBILITY"
+                and self.receiver_tax_level_code != UNKNOWN_RESPONSIBILITY_TAX_LEVEL):
+            raise ValueError(
+                "receiver_tax_level_source UNKNOWN_RESPONSIBILITY requires "
+                "receiver_tax_level_code R-99-PN"
+            )
         return self
 
 

@@ -2,6 +2,10 @@
 
 **Borrador listo para radicar. No enviado.**
 
+> **Actualización 2026-10-27.** Se radicó y la DIAN respondió con los Oficios
+> 100153157-15391 y 100153157-16972. Ver
+> [contenedor con responsabilidad desconocida](../contenedor-responsabilidad-desconocida-020a7.md).
+
 **Destinatario:** DIAN, equipo competente de facturación electrónica.
 
 **Asunto:** Representación de `ReceiverParty/PartyTaxScheme/TaxLevelCode` en

@@ -8,6 +8,7 @@ from decimal import Decimal
 from typing import Any, Literal, cast
 
 from facturacion_dian_api.core.buyer import (
+    UNKNOWN_RESPONSIBILITY_TAX_LEVEL,
     resolve_buyer_identity,
     validate_buyer_family,
     validate_responsibilities,
@@ -23,6 +24,7 @@ from facturacion_dian_api.core.models import (
     Environment,
     EventStatus,
     EventType,
+    ReceiverTaxLevelSource,
     TaxType,
 )
 from facturacion_dian_api.core.monetary import money, percentage_amount
@@ -584,15 +586,22 @@ class AttachedDocumentRequest(BaseModel):
     receiver_document_type: str
     receiver_tax_level_code: str | None = Field(
         default=None,
-        description="Optional assertion: copied from signed XML when present. If absent there, delivery fails explicitly (AE28); no invented fallback.",
+        description=(
+            "With SIGNED_DOCUMENT, an optional assertion: copied from signed XML when present; "
+            "if absent there, delivery fails explicitly (AE28), with no silent fallback. "
+            "Required by BUYER_RUT, and exactly R-99-PN for UNKNOWN_RESPONSIBILITY."
+        ),
     )
-    receiver_tax_level_source: Literal["SIGNED_DOCUMENT", "BUYER_RUT"] = Field(
+    receiver_tax_level_source: ReceiverTaxLevelSource = Field(
         default="SIGNED_DOCUMENT",
         description=(
             "SIGNED_DOCUMENT (default) copies AE28 from the signed XML. BUYER_RUT is an explicit "
             "issuer declaration: the signed XML omitted the buyer responsibility and the issuer "
-            "holds the buyer's RUT; AE28 then carries receiver_tax_level_code. It never replaces "
-            "a value present in the signed XML. The caller keeps the RUT evidence."
+            "holds the buyer's RUT; AE28 then carries receiver_tax_level_code. "
+            "UNKNOWN_RESPONSIBILITY is an explicit issuer declaration that the responsibility "
+            "is unknown: AE28 carries R-99-PN in the container only, as DIAN Oficio "
+            "100153157-16972 (2026-10-27) allows, without classifying the buyer. Neither "
+            "replaces a value present in the signed XML. The caller keeps the evidence."
         ),
     )
     receiver_email: str | None = None
@@ -623,6 +632,12 @@ class AttachedDocumentRequest(BaseModel):
                 raise ValueError("receiver_dv does not match receiver_nit")
         if self.receiver_tax_level_source == "BUYER_RUT" and self.receiver_tax_level_code is None:
             raise ValueError("receiver_tax_level_source BUYER_RUT requires receiver_tax_level_code")
+        if (self.receiver_tax_level_source == "UNKNOWN_RESPONSIBILITY"
+                and self.receiver_tax_level_code != UNKNOWN_RESPONSIBILITY_TAX_LEVEL):
+            raise ValueError(
+                "receiver_tax_level_source UNKNOWN_RESPONSIBILITY requires "
+                "receiver_tax_level_code R-99-PN"
+            )
         return self
 
 

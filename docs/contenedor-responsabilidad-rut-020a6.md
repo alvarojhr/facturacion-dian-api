@@ -6,9 +6,10 @@ FAK26 (responsabilidades del comprador) es opcional en la factura, mientras que
 AE28 del AttachedDocument tiene ocurrencia 1..1. Si una factura se firmó y validó
 sin FAK26, el servicio responde 422
 `ATTACHED_DOCUMENT_BUYER_RESPONSIBILITY_UNRESOLVED` y no construye el contenedor.
-Ese límite sigue vigente para responsabilidades **desconocidas**: no hay una
-representación oficial de "desconocido" (ver la
-[auditoría AE28](auditorias/2026-09-19-ae28-entrega-comprador.md)).
+En 0.2.0a6 ese límite seguía vigente para responsabilidades **desconocidas** (ver
+la [auditoría AE28](auditorias/2026-09-19-ae28-entrega-comprador.md)). La DIAN
+respondió después y 0.2.0a7 las representa con R-99-PN sólo en el contenedor:
+ver [contenedor con responsabilidad desconocida](contenedor-responsabilidad-desconocida-020a7.md).
 
 Hay un caso distinto. Después de firmar, el emisor obtiene el RUT del comprador y
 conoce sus responsabilidades reales, pero la factura validada ya no se puede
@@ -49,8 +50,8 @@ Garantías con `BUYER_RUT`:
 - Conservar la evidencia (número de formulario y fecha del RUT, quién lo
   registró). El servicio es *stateless* y no la almacena.
 - Esta declaración se limita al contenedor de entrega. La DIAN no valida el
-  AttachedDocument; la consulta sobre AE28 sigue abierta y la decisión de usar
-  esta vía corresponde al emisor.
+  AttachedDocument y la decisión de usar esta vía corresponde al emisor. La
+  consulta sobre AE28 ya tiene respuesta (2026-10-27, ver 0.2.0a7).
 
 ## Versión
 

@@ -12,6 +12,10 @@ NATURAL_PERSON_DOCUMENTS = frozenset({"CC", "CE", "TI", "PASSPORT"})
 REQUIRED_RESPONSIBILITY_FAMILIES = frozenset({
     "NOTA_AJUSTE_DEE_CREDITO", "NOTA_AJUSTE_DEE_DEBITO",
 })
+# AE28 when the buyer responsibility is unknown. DIAN accepts it in the AttachedDocument
+# only (Oficio 100153157-16972, 2026-10-27): it neither classifies the buyer nor alters
+# the signed document, so it is never a buyer fact and never reaches FAK26.
+UNKNOWN_RESPONSIBILITY_TAX_LEVEL = "R-99-PN"
 
 
 def validate_responsibilities(value: str | None) -> str | None:

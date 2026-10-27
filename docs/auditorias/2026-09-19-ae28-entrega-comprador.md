@@ -4,6 +4,12 @@ Fecha de revisión: 19 de septiembre de 2026, Colombia.
 
 ## Resultado
 
+> **Actualización 2026-10-27.** La consulta se radicó y la DIAN admitió R-99-PN
+> en el AE28 del contenedor para la responsabilidad desconocida (Oficio
+> 100153157-16972). Ver
+> [contenedor con responsabilidad desconocida](../contenedor-responsabilidad-desconocida-020a7.md).
+> El resto del informe conserva el estado al 19 de septiembre.
+
 **El caso de AttachedDocument sigue sin una representación acreditada para
 responsabilidad desconocida. La investigación no permite liberar ese recorrido.**
 Se entrega una [consulta técnica lista para radicar](2026-09-19-consulta-dian-ae28.md)

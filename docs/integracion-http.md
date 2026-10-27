@@ -1,6 +1,6 @@
 # Guia de integracion HTTP
 
-La versión candidata `0.2.0a1` admite [compradores con datos fiscales desconocidos](compradores-parciales-020a1.md). Revise la política por familia y la dependencia pendiente de AE28 antes de activar la entrega electrónica.
+La versión candidata `0.2.0a1` admite [compradores con datos fiscales desconocidos](compradores-parciales-020a1.md). Revise la política por familia y las declaraciones de AE28 (0.2.0a6 y 0.2.0a7) antes de activar la entrega electrónica.
 
 La ampliación local de `0.2.0a0` incorpora `document.payment_methods` y conserva
 el IVA informado dentro de las tolerancias fiscales. Consulte la
@@ -91,7 +91,7 @@ Este flujo evita reconstruir otro documento después de un timeout. La API verif
 
 El request recibe el documento firmado por el emisor y el `ApplicationResponse` firmado por DIAN. El AR debe contener respuesta `02` y referenciar el mismo número y CUFE/CUDE. El servicio toma del AR el resultado, fecha y hora de validación, construye el contenedor y lo firma.
 
-AE28 (responsabilidades del comprador) se copia del documento firmado. Si el original las omitió y el emisor tiene el RUT del comprador, `receiver_tax_level_source=BUYER_RUT` con `receiver_tax_level_code` las declara sólo en el contenedor (0.2.0a6). Ver [contenedor con responsabilidad respaldada por RUT](contenedor-responsabilidad-rut-020a6.md).
+AE28 (responsabilidades del comprador) se copia del documento firmado. Si el original las omitió y el emisor tiene el RUT del comprador, `receiver_tax_level_source=BUYER_RUT` con `receiver_tax_level_code` las declara sólo en el contenedor (0.2.0a6). Ver [contenedor con responsabilidad respaldada por RUT](contenedor-responsabilidad-rut-020a6.md). Si el emisor no las conoce, `receiver_tax_level_source=UNKNOWN_RESPONSIBILITY` con `receiver_tax_level_code=R-99-PN` las representa sólo en el contenedor, como admite la DIAN (0.2.0a7). Ver [contenedor con responsabilidad desconocida](contenedor-responsabilidad-desconocida-020a7.md).
 
 Payload canonico:
 
