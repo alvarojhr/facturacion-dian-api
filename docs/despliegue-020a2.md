@@ -72,6 +72,12 @@ pruebas; la integración del consumidor continúa siendo HTTP.
 
 ## Dependencia fiscal todavía abierta: AE28
 
+> **Actualización 2026-10-27.** La consulta se radicó y la DIAN respondió: R-99-PN
+> procede en el AE28 del contenedor cuando se desconoce la responsabilidad. Se
+> declara desde 0.2.0a7; ver
+> [contenedor con responsabilidad desconocida](contenedor-responsabilidad-desconocida-020a7.md).
+> El texto siguiente describe el estado de 0.2.0a2.
+
 La aceptación de FE/NC/ND con comprador parcial está implementada. Si el XML
 original carece de responsabilidad fiscal, crear su AttachedDocument sigue
 devolviendo `ATTACHED_DOCUMENT_BUYER_RESPONSIBILITY_UNRESOLVED`. Es un control

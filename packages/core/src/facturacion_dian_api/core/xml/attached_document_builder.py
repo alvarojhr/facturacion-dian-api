@@ -5,7 +5,11 @@ from __future__ import annotations
 import base64
 from typing import cast
 
-from facturacion_dian_api.core.buyer import validate_responsibilities, validate_tax_scheme
+from facturacion_dian_api.core.buyer import (
+    UNKNOWN_RESPONSIBILITY_TAX_LEVEL,
+    validate_responsibilities,
+    validate_tax_scheme,
+)
 from facturacion_dian_api.core.models import AttachedDocumentBuildRequest
 from facturacion_dian_api.core.signing.xades import verify_embedded_document_signature
 from facturacion_dian_api.core.xml.namespaces import (
@@ -137,28 +141,34 @@ def _source_party(
     asserted_level = validate_responsibilities(responsibility)
     scheme_id = _text(party, "*[local-name()='TaxScheme']/*[local-name()='ID']")
     scheme_name = _text(party, "*[local-name()='TaxScheme']/*[local-name()='Name']")
-    if responsibility_source == "BUYER_RUT":
-        # The issuer declares the buyer's RUT responsibilities for a source that legitimately
-        # omitted FAK26. Only a missing AE28 is filled; signed facts are never replaced.
+    if responsibility_source in ("BUYER_RUT", "UNKNOWN_RESPONSIBILITY"):
+        # The issuer declares AE28 for a source that legitimately omitted FAK26: the buyer's
+        # RUT responsibilities, or R-99-PN when they are unknown, which DIAN accepts for the
+        # container only (Oficio 100153157-16972, 2026-10-27). Only a missing AE28 is filled;
+        # signed facts are never replaced.
         if role != "Customer":
-            raise ValueError("BUYER_RUT applies only to the receiver party")
+            raise ValueError(f"{responsibility_source} applies only to the receiver party")
         if nodes:
             raise ValueError(
-                "ATTACHED_DOCUMENT_BUYER_RUT_NOT_APPLICABLE: signed source already declares "
-                "the buyer TaxLevelCode; the container copies it and cannot replace it"
+                f"ATTACHED_DOCUMENT_{responsibility_source}_NOT_APPLICABLE: signed source "
+                "already declares the buyer TaxLevelCode; the container copies it and cannot "
+                "replace it"
             )
         if asserted_level is None:
-            raise ValueError("BUYER_RUT requires receiver_tax_level_code")
+            raise ValueError(f"{responsibility_source} requires receiver_tax_level_code")
+        if (responsibility_source == "UNKNOWN_RESPONSIBILITY"
+                and asserted_level != UNKNOWN_RESPONSIBILITY_TAX_LEVEL):
+            raise ValueError("UNKNOWN_RESPONSIBILITY requires receiver_tax_level_code R-99-PN")
         validate_tax_scheme(scheme_id, scheme_name)
         return asserted_level, scheme_id, scheme_name
     if not nodes:
         if role == "Customer":
             raise ValueError(
                 "ATTACHED_DOCUMENT_BUYER_RESPONSIBILITY_UNRESOLVED: signed source has no "
-                "buyer TaxLevelCode; AE28 requires it. No officially supported unknown-value "
-                "representation has been established. Electronic delivery is blocked; "
-                "do not invent R-99-PN or rewrite the signed document. An issuer holding the "
-                "buyer's RUT may declare receiver_tax_level_source=BUYER_RUT."
+                "buyer TaxLevelCode; AE28 requires it and SIGNED_DOCUMENT never fills it. "
+                "The signed document is never rewritten. The issuer may declare "
+                "receiver_tax_level_source=BUYER_RUT with the buyer's RUT responsibilities, "
+                "or UNKNOWN_RESPONSIBILITY with R-99-PN when they are unknown."
             )
         raise ValueError("Signed source is missing issuer TaxLevelCode")
     source_level = validate_responsibilities(nodes[0].text or "")

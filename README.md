@@ -1,6 +1,6 @@
 # facturacion-dian-api
 
-La versión candidata `0.2.0a2` conserva el [contrato de compradores con datos fiscales desconocidos](docs/compradores-parciales-020a1.md), integra las correcciones vigentes y usa una [imagen verificable por hashes](docs/despliegue-020a2.md). La dependencia de entrega AE28 sigue abierta cuando el XML original no contiene responsabilidad fiscal.
+La versión candidata `0.2.0a2` conserva el [contrato de compradores con datos fiscales desconocidos](docs/compradores-parciales-020a1.md), integra las correcciones vigentes y usa una [imagen verificable por hashes](docs/despliegue-020a2.md). Si el XML original no contiene responsabilidad fiscal, el emisor completa AE28 sólo en el contenedor con una declaración explícita: el RUT del comprador o, si la desconoce, R-99-PN (0.2.0a7, [responsabilidad desconocida](docs/contenedor-responsabilidad-desconocida-020a7.md)).
 
 API HTTP de alto nivel para integrar facturacion electronica DIAN en Colombia.
 

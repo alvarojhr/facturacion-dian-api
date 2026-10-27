@@ -21,7 +21,8 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 from facturacion_dian_api.core.dian.client import DianClient
 from facturacion_dian_api.core.dian.response_parser import DianResponse
-from facturacion_dian_api.core.models import DocumentSubmitRequest
+from facturacion_dian_api.core.models import AttachedDocumentBuildRequest, DocumentSubmitRequest
+from facturacion_dian_api.core.runtime_config import compute_nit_dv
 from facturacion_dian_api.core.signing.certificate import CertificateBundle
 from facturacion_dian_api.core.signing.xades import (
     sign_document,
@@ -45,6 +46,9 @@ NS = {"cac": "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateCompon
       "cbc": "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"}
 BUYER = "cac:AccountingCustomerParty/cac:Party/cac:PartyTaxScheme/"
 CC = {"name": "COMPRADOR DE PRUEBA", "document_type": "CC", "document_number": "123456789"}
+NIT_BUYER = {"name": "COMPRADOR JURIDICO DE PRUEBA", "document_type": "NIT",
+             "document_number": "901555777", "additional_account_id": "1"}
+TYPE_CODES = {"FACTURA_ELECTRONICA": "01", "NOTA_CREDITO": "91"}
 FAMILIES = [
     ("sample_invoice_payload", "FACTURA_ELECTRONICA"),
     ("sample_credit_note_payload", "NOTA_CREDITO"),
@@ -201,10 +205,14 @@ def test_real_preparation_and_retries_keep_exact_bytes(request, client, monkeypa
     assert transmitted == [(artifact["xml_filename"], original)] * 2
 
 
-def delivery_payload(client, bundle, responsibility, *, scheme=(None, None)):
-    payload = deepcopy(DOCUMENT_SUBMISSION_INVOICE_EXAMPLE)
-    payload["buyer"] = {**CC, "tax_level_code": responsibility, "tax_scheme_id": scheme[0], "tax_scheme_name": scheme[1]}
+def delivery_payload(client, bundle, responsibility, *, scheme=(None, None), buyer=CC, document=None):
+    payload = deepcopy(document or DOCUMENT_SUBMISSION_INVOICE_EXAMPLE)
+    # The container example asserts the example issuer; fixtures default to the server's.
+    payload.setdefault("issuer", deepcopy(DOCUMENT_SUBMISSION_INVOICE_EXAMPLE["issuer"]))
+    payload["buyer"] = {**buyer, "tax_level_code": responsibility, "tax_scheme_id": scheme[0], "tax_scheme_name": scheme[1]}
     payload["submission_options"]["prepare_only"] = True
+    number = payload["document"]["number"]
+    type_code = TYPE_CODES[payload["document"]["type"]]
     prepared = client.post("/api/v1/documents/submissions", json=payload)
     assert prepared.status_code == 200, prepared.text
     doc = prepared.json()
@@ -224,14 +232,20 @@ def delivery_payload(client, bundle, responsibility, *, scheme=(None, None)):
         identification = etree.SubElement(party, "{" + NS["cac"] + "}PartyIdentification")
         etree.SubElement(identification, "{" + NS["cbc"] + "}ID").text = identifier
         ar.insert(response_index + offset, party)
-    ar.xpath("//*[local-name()='DocumentReference']/*[local-name()='UUID']")[0].text = doc["document_key"]
+    reference = ar.xpath("//*[local-name()='DocumentReference']")[0]
+    for name, value in (("ID", number), ("UUID", doc["document_key"]), ("DocumentTypeCode", type_code)):
+        reference.xpath(f"*[local-name()='{name}']")[0].text = value
     ar_bytes = etree.tostring(sign_document(ar, bundle), encoding="UTF-8", xml_declaration=True)
     verify_embedded_document_signature(etree.fromstring(ar_bytes))
     check_xsd(etree.fromstring(ar_bytes), "DIAN_FE_XSD_DIR")
+    nit = buyer["document_type"] == "NIT"
     attached = deepcopy(ATTACHED_DOCUMENT_REQUEST_EXAMPLE)
-    attached.update(receiver_name=CC["name"], receiver_nit=CC["document_number"], receiver_dv=None,
-                    receiver_document_type="13", cufe=doc["document_key"],
+    attached.update(document_number=number, document_type_code=type_code,
+                    receiver_name=buyer["name"], receiver_nit=buyer["document_number"],
+                    receiver_dv=compute_nit_dv(buyer["document_number"]) if nit else None,
+                    receiver_document_type="31" if nit else "13", cufe=doc["document_key"],
                     issue_date=payload["document"]["issue_date"],
+                    issue_time=payload["document"]["issue_time"],
                     invoice_xml_base64=doc["artifacts"]["xml_base64"],
                     application_response_xml_base64=base64.b64encode(ar_bytes).decode())
     attached.pop("receiver_tax_level_code")
@@ -294,6 +308,56 @@ def test_buyer_rut_contract_rejects_incomplete_or_unknown_declarations(client, r
     response = client.post("/api/v1/attached-documents", json=payload)
     assert response.status_code == 422, response.text
     assert "content_base64" not in response.json()
+
+
+# DIAN Oficio 100153157-16972 (2026-10-27): R-99-PN may stand for an unknown buyer
+# responsibility in the container's AE28, without altering the signed document or
+# classifying the buyer. The Anexo makes no distinction by document or receiver ID type.
+@pytest.mark.parametrize("buyer", [CC, NIT_BUYER], ids=["CC", "NIT"])
+@pytest.mark.parametrize("fixture", [None, "sample_credit_note_payload"], ids=["FV", "NC"])
+@pytest.mark.parametrize("scheme", [(None, None), ("01", "IVA")])
+def test_unknown_responsibility_fills_only_missing_ae28_with_r99pn(request, client, real_crypto, buyer, fixture, scheme):
+    document = request.getfixturevalue(fixture) if fixture else None
+    payload = delivery_payload(client, real_crypto, None, scheme=scheme, buyer=buyer, document=document)
+    payload.update(receiver_tax_level_source="UNKNOWN_RESPONSIBILITY", receiver_tax_level_code="R-99-PN")
+    response = client.post("/api/v1/attached-documents", json=payload)
+    assert response.status_code == 200, response.text
+    with ZipFile(BytesIO(base64.b64decode(response.json()["content_base64"]))) as archive:
+        root = etree.fromstring(archive.read(response.json()["xml_filename"]))
+    verify_document_signature(root, real_crypto)
+    check_xsd(root, "DIAN_FE_XSD_DIR")
+    receiver = "cac:ReceiverParty/cac:PartyTaxScheme/"
+    assert root.xpath(receiver + "cbc:TaxLevelCode/text()", namespaces=NS) == ["R-99-PN"]
+    assert root.xpath(receiver + "cbc:CompanyID/text()", namespaces=NS) == [buyer["document_number"]]
+    assert root.xpath(receiver + "cac:TaxScheme/cbc:ID/text()", namespaces=NS) == [scheme[0] or "ZZ"]
+    embedded = root.xpath("//cac:ExternalReference/cbc:Description/text()", namespaces=NS)
+    for text, field in zip(embedded, ["invoice_xml_base64", "application_response_xml_base64"], strict=True):
+        assert text.encode("utf-8") == base64.b64decode(payload[field])
+    signed = etree.fromstring(embedded[0].encode("utf-8"))
+    verify_embedded_document_signature(signed)
+    assert not signed.xpath(BUYER + "cbc:TaxLevelCode", namespaces=NS)
+
+
+@pytest.mark.parametrize("level", ["R-99-PN", "O-13"])
+def test_unknown_responsibility_never_replaces_a_signed_responsibility(client, real_crypto, level):
+    payload = delivery_payload(client, real_crypto, level)
+    payload.update(receiver_tax_level_source="UNKNOWN_RESPONSIBILITY", receiver_tax_level_code="R-99-PN")
+    response = client.post("/api/v1/attached-documents", json=payload)
+    assert response.status_code == 422, response.text
+    assert "ATTACHED_DOCUMENT_UNKNOWN_RESPONSIBILITY_NOT_APPLICABLE" in response.json()["detail"]
+    assert "content_base64" not in response.json()
+
+
+@pytest.mark.parametrize("code", [None, "O-13", "O-13;R-99-PN", "O-99"])
+def test_unknown_responsibility_only_declares_r99pn(client, real_crypto, code):
+    payload = delivery_payload(client, real_crypto, None)
+    payload.update(receiver_tax_level_source="UNKNOWN_RESPONSIBILITY", receiver_tax_level_code=code)
+    response = client.post("/api/v1/attached-documents", json=payload)
+    assert response.status_code == 422, response.text
+    assert "content_base64" not in response.json()
+    core = {**payload, "receiver_tax_level_code": code}
+    with pytest.raises(ValidationError, match="R-99-PN|responsibility"):
+        AttachedDocumentBuildRequest.model_validate(core)
 
 
 @pytest.mark.parametrize("scheme", [(None, None), ("01", "IVA"), ("04", "INC"), ("ZA", "IVA e INC"), ("ZZ", "No aplica")])

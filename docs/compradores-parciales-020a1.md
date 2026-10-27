@@ -11,7 +11,8 @@ en FE, NC, ND y POS. Conserva nombre, documento y tipo de persona. La **entrega
 electrónica con AttachedDocument queda bloqueada cuando el XML firmado carece
 de TaxLevelCode del comprador**: no se acreditó una representación oficial de
 «desconocido» para AE28, que es obligatorio. Este build no resuelve esa dependencia
-ni acredita aceptación DIAN real.
+ni acredita aceptación DIAN real. La DIAN la resolvió después; ver
+[0.2.0a7](contenedor-responsabilidad-desconocida-020a7.md).
 
 La revisión posterior distingue ese bloqueo del contenedor de las modalidades
 de entrega por representación gráfica permitidas para adquirentes que no son
@@ -89,6 +90,13 @@ Desde 0.2.0a6, un emisor que obtuvo el RUT del comprador puede declararlo con
 `receiver_tax_level_source=BUYER_RUT`. AE28 lleva entonces las responsabilidades
 transcritas del RUT, sólo si el original las omitió. Ver
 [contenedor con responsabilidad respaldada por RUT](contenedor-responsabilidad-rut-020a6.md).
+
+Desde 0.2.0a7 existe la representación respaldada por DIAN que faltaba: el Oficio
+100153157-16972 (2026-10-27) admite R-99-PN en el AE28 del contenedor cuando se
+desconoce la responsabilidad. El emisor lo declara con
+`receiver_tax_level_source=UNKNOWN_RESPONSIBILITY`; el valor por defecto sigue sin
+completar nada. Ver
+[contenedor con responsabilidad desconocida](contenedor-responsabilidad-desconocida-020a7.md).
 
 Con responsabilidades conocidas se genera y firma el contenedor y se empaqueta
 en ZIP. La factura y el AR se verifican criptográficamente y se conservan byte a
