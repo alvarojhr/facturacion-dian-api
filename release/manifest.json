@@ -1,7 +1,7 @@
 {
-  "commit": "efa42e782f1ddaee1d6a8b164a90f57f851e891d",
+  "commit": "988a483694ee5ab4566546ccba60d64d9ebe682f",
   "package_tree": "883dda5417f0f12ac13d7b689439790956c91894",
-  "source_date_epoch": 1793121409,
+  "source_date_epoch": 1793121994,
   "versions": {
     "core": "0.2.0a7",
     "server": "0.2.0a7"
@@ -13,10 +13,10 @@
   },
   "python_minor": "3.12",
   "wheel_format": "canonical-zip-v1",
-  "requirements_lock_sha256": "b1dae1ec2d51b4c2de2308b4eb68ff344ef160e0a9aaafe4a7809a87148ac8ec",
+  "requirements_lock_sha256": "1924300ecc27cd4207ff96c17aec4aa11b87fae63a245e9b60f0bf2962cd3cf5",
   "sha256": {
-    "facturacion_dian_api_core-0.2.0a7-py3-none-any.whl": "b3949c5db27b6fe58ff01a8b7d8f8fd7cd1f6aed759c612ae9cab6753f2fdf39",
-    "facturacion_dian_api_server-0.2.0a7-py3-none-any.whl": "8acfb87c52e4737b5d7e29da453a33d52ff4454567e266450c8c60a5b4a8798e"
+    "facturacion_dian_api_core-0.2.0a7-py3-none-any.whl": "2a2344d55bec3e0a22732e982ddeb4b670b6d9e7fd041efdee411f825c1d02ac",
+    "facturacion_dian_api_server-0.2.0a7-py3-none-any.whl": "a91e434a16e06e111900c34e1f1992c4e08688e631d4fa4f98ea35bba85ac610"
   },
   "repeated_build_identical": true,
   "committed_source_sha256": {
